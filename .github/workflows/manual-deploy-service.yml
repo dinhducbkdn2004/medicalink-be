@@ -1,0 +1,169 @@
+name: Manual Deploy Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Select service to deploy'
+        required: true
+        type: choice
+        options:
+          - accounts-service
+          - api-gateway
+          - booking-service
+          - content-service
+          - notification-service
+          - orchestrator-service
+          - provider-service
+          - infrastructure
+      image_tag:
+        description: 'Image tag to deploy (leave empty for latest staging)'
+        required: false
+        type: string
+        default: ''
+      force_rebuild:
+        description: 'Force rebuild image even if no changes'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  GITHUB_OWNER: ${{ github.repository_owner }}
+  IMAGE_TAG: ${{ github.event.inputs.image_tag || format('staging-{0}', github.sha) }}
+
+jobs:
+  build-service:
+    if: github.event.inputs.force_rebuild == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GITHUB_OWNER }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get service directory
+        id: service-dir
+        run: |
+          case "${{ github.event.inputs.service }}" in
+            provider-service)
+              echo "service_dir=provider-directory-service" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "service_dir=${{ github.event.inputs.service }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.GITHUB_OWNER }}/medicalink-${{ github.event.inputs.service }}
+          tags: |
+            type=raw,value=${{ env.IMAGE_TAG }}
+            type=raw,value=${{ env.IMAGE_TAG }}-{{sha}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/${{ steps.service-dir.outputs.service_dir }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  deploy-service:
+    needs: build-service
+    if: always() && (needs.build-service.result == 'success' || needs.build-service.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/detect-changes.sh
+          chmod +x scripts/deploy-to-vm.sh
+
+      - name: Validate service name
+        run: |
+          case "${{ github.event.inputs.service }}" in
+            accounts-service|api-gateway|booking-service|content-service|notification-service|orchestrator-service|provider-service|infrastructure)
+              echo "Valid service: ${{ github.event.inputs.service }}"
+              ;;
+            *)
+              echo "Invalid service: ${{ github.event.inputs.service }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Deploy ${{ github.event.inputs.service }} to VM
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Deploying ${{ github.event.inputs.service }} with image tag: ${{ env.IMAGE_TAG }}"
+          ./scripts/deploy-to-vm.sh ${{ github.event.inputs.service }} ${{ env.IMAGE_TAG }}
+
+      - name: Deployment Summary
+        run: |
+          echo "## Manual Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service**: ${{ github.event.inputs.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Force Rebuild**: ${{ github.event.inputs.force_rebuild }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**VM**: ${{ secrets.VM_HOST }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ github.event.inputs.force_rebuild }}" = "true" ]; then
+            echo "Image was rebuilt and pushed to GHCR" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Using existing image from GHCR" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Full Image Name**: ghcr.io/${{ env.GITHUB_OWNER }}/medicalink-${{ github.event.inputs.service }}:${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+
+  notify-completion:
+    needs: [build-service, deploy-service]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Final Summary
+        run: |
+          echo "## Manual Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.deploy-service.result }}" = "success" ]; then
+            echo "**Deployment Successful**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The service **${{ github.event.inputs.service }}** has been successfully deployed to the staging environment." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Deployment Failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The deployment of **${{ github.event.inputs.service }}** failed. Please check the logs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service**: ${{ github.event.inputs.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force Rebuild**: ${{ github.event.inputs.force_rebuild }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Status**: ${{ needs.build-service.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deploy Status**: ${{ needs.deploy-service.result }}" >> $GITHUB_STEP_SUMMARY

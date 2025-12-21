@@ -1,0 +1,66 @@
+<mj-text font-size="18px" font-weight="600">
+  Hi {{patientName}},
+</mj-text>
+<mj-text>
+  We received your appointment booking and saved the details below. You can check or update your appointment anytime using the button at the bottom.
+</mj-text>
+<mj-table css-class="mobile-table">
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Status</td>
+    <td style="padding:2px 0;">{{statusLabel}}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Doctor</td>
+    <td style="padding:2px 0;">{{doctorName}}</td>
+  </tr>
+  {{#if specialtyName}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Specialty</td>
+    <td style="padding:2px 0;">{{specialtyName}}</td>
+  </tr>
+  {{/if}}
+  {{#if serviceDate}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Date</td>
+    <td style="padding:2px 0;">{{serviceDate}}</td>
+  </tr>
+  {{/if}}
+  {{#if timeStart}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Time</td>
+    <td style="padding:2px 0;">{{timeStart}} – {{timeEnd}}</td>
+  </tr>
+  {{/if}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Location</td>
+    <td style="padding:2px 0;">{{locationName}}</td>
+  </tr>
+  {{#if locationAddress}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Address</td>
+    <td style="padding:2px 0;">{{locationAddress}}</td>
+  </tr>
+  {{/if}}
+  {{#if locationPhone}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Phone</td>
+    <td style="padding:2px 0;">{{locationPhone}}</td>
+  </tr>
+  {{/if}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Booked via</td>
+    <td style="padding:2px 0;">{{bookingChannelLabel}}</td>
+  </tr>
+</mj-table>
+{{#if reason}}
+<mj-text>
+  <strong>Visit reason:</strong> {{reason}}
+</mj-text>
+{{/if}}
+{{#if notes}}
+<mj-text>
+  <strong>Notes:</strong> {{{notes}}}
+</mj-text>
+{{/if}}
+{{> appointment-lookup-button }}
+

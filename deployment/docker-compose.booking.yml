@@ -1,0 +1,28 @@
+# Booking Service
+services:
+  # Booking Service
+  booking-service:
+    build:
+      context: ..
+      dockerfile: apps/booking-service/Dockerfile
+    container_name: medicalink-booking
+    env_file:
+      - ../.env.production
+    environment:
+      - NODE_ENV=production
+      - BOOKING_SERVICE_PORT=3003
+    networks:
+      - medicalink-network
+    command: ["node", "dist/apps/booking-service/main.js"]
+    restart: unless-stopped
+    logging:
+      driver: gcplogs
+      options:
+        gcp-project: "medicalink-06"
+        gcp-log-cmd: "true"
+        labels: "service,environment,component"
+        env: "NODE_ENV,APP_NAME"
+
+networks:
+  medicalink-network:
+    external: true

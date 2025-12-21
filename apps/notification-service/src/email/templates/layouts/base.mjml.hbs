@@ -1,0 +1,62 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-text font-family="Inter, Arial, sans-serif" font-size="14px" color="#111827"></mj-text>
+      <mj-section padding="0"></mj-section>
+      <mj-column padding="0"></mj-column>
+    </mj-attributes>
+    <mj-style>
+      @media only screen and (max-width: 480px) {
+        .mobile-table table {
+          width: 100% !important;
+        }
+        .mobile-table td {
+          display: block !important;
+          width: 100% !important;
+          padding: 4px 0 !important;
+        }
+        .mobile-table tr td:first-child {
+          font-weight: 600 !important;
+          padding-top: 12px !important;
+        }
+        .mobile-table tr td:last-child {
+          padding-bottom: 8px !important;
+        }
+      }
+    </mj-style>
+    <mj-title>{{subject}}</mj-title>
+  </mj-head>
+  <mj-body background-color="#FFFFFF">
+    <mj-section padding="32px 0 16px">
+      <mj-column>
+        <mj-image
+          src="https://res.cloudinary.com/ds9fkteia/image/upload/v1763376683/rect-logo-sm_et2xby.png"
+          alt="MedicaLink"
+          width="160px"
+          padding="0"
+          href="https://medicalink.click"
+        ></mj-image>
+      </mj-column>
+    </mj-section>
+    <mj-section
+      background-color="#FFFFFF"
+      padding="32px"
+      border-radius="16px"
+      border="1px solid #E5E7EB"
+      border-top="4px solid #1E9DF1"
+    >
+      <mj-column>
+        {{> header }}
+        {{{ body }}}
+        {{> footer }}
+      </mj-column>
+    </mj-section>
+    <mj-section padding="16px 0">
+      <mj-column>
+        <mj-text align="center" color="#1E9DF1" font-weight="600">
+          © {{year}} MedicaLink - All rights reserved
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

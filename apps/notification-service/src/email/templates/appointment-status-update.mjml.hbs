@@ -1,0 +1,64 @@
+<mj-text font-size="18px" font-weight="600">
+  Hi {{patientName}},
+</mj-text>
+<mj-text padding-bottom="8px">
+  {{statusMessage}}
+</mj-text>
+{{#if statusNote}}
+<mj-text color="#1E9DF1" font-weight="600" padding-bottom="8px">
+  Note from our team: {{statusNote}}
+</mj-text>
+{{/if}}
+<mj-table css-class="mobile-table">
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Status Changed</td>
+    <td style="padding:2px 0;">{{previousStatusLabel}} → {{newStatusLabel}}</td>
+  </tr>
+  {{#if doctorName}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Doctor</td>
+    <td style="padding:2px 0;">{{doctorName}}</td>
+  </tr>
+  {{/if}}
+  {{#if specialtyName}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Specialty</td>
+    <td style="padding:2px 0;">{{specialtyName}}</td>
+  </tr>
+  {{/if}}
+  {{#if serviceDate}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Date</td>
+    <td style="padding:2px 0;">{{serviceDate}}</td>
+  </tr>
+  {{/if}}
+  {{#if timeStart}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Time</td>
+    <td style="padding:2px 0;">{{timeStart}} – {{timeEnd}}</td>
+  </tr>
+  {{/if}}
+  {{#if locationName}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Location</td>
+    <td style="padding:2px 0;">{{locationName}}</td>
+  </tr>
+  {{/if}}
+  {{#if locationAddress}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Address</td>
+    <td style="padding:2px 0;">{{locationAddress}}</td>
+  </tr>
+  {{/if}}
+  {{#if locationPhone}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Phone</td>
+    <td style="padding:2px 0;">{{locationPhone}}</td>
+  </tr>
+  {{/if}}
+  <tr>
+    <td style="font-weight:600;padding:2px 0;width:160px;">Updated at</td>
+    <td style="padding:2px 0;">{{changedAt}}</td>
+  </tr>
+</mj-table>
+{{> appointment-lookup-button }}

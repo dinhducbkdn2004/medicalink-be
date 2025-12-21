@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("ACCOUNTS_DATABASE_URL")
+}
+
+enum StaffRole {
+  SUPER_ADMIN
+  ADMIN
+  DOCTOR
+}
+
+enum PermissionEffect {
+  ALLOW
+  DENY
+}
+
+model StaffAccount {
+  id           String    @id @default(cuid())
+  fullName     String    @map("full_name") @db.VarChar(100)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         StaffRole @default(ADMIN) // Keep for client-side role display
+  phone        String?   @db.VarChar(32)
+  isMale       Boolean?  @map("is_male")
+  dateOfBirth  DateTime? @map("date_of_birth") @db.Date
+  doctorId     String?   @unique @map("doctor_id") @db.VarChar(27) // Link to doctor profile in provider-directory-service
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  // Permission system relations
+  authVersion    AuthVersion?
+  userPermissions UserPermission[]
+  userGroups      UserGroup[]
+
+  @@map("staff_accounts")
+}
+
+// Permission System Models
+model Permission {
+  id          String   @id @default(cuid())
+  resource    String   @db.VarChar(100) // e.g., "appointments", "blogs", "users"
+  action      String   @db.VarChar(50) // e.g., "read", "write", "delete", "publish"
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userPermissions  UserPermission[]
+  groupPermissions GroupPermission[]
+
+  @@unique([resource, action])
+  @@index([resource], map: "idx_permissions_resource")
+  @@map("permissions")
+}
+
+model UserPermission {
+  id           String           @id @default(cuid())
+  userId       String           @map("user_id") @db.VarChar(27)
+  permissionId String           @map("permission_id") @db.VarChar(27)
+  effect       PermissionEffect @default(ALLOW)
+  tenantId     String?          @map("tenant_id") @db.VarChar(27) // For multi-tenant support
+  conditions   Json? // JSON conditions for context-based permissions
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user       StaffAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission Permission   @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId, tenantId])
+  @@index([userId], map: "idx_user_permissions_user")
+  @@index([tenantId], map: "idx_user_permissions_tenant")
+  @@map("user_permissions")
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  tenantId    String?  @map("tenant_id") @db.VarChar(27) // For multi-tenant support
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userGroups       UserGroup[]
+  groupPermissions GroupPermission[]
+
+  @@unique([name, tenantId])
+  @@index([tenantId], map: "idx_groups_tenant")
+  @@map("groups")
+}
+
+model UserGroup {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id") @db.VarChar(27)
+  groupId   String   @map("group_id") @db.VarChar(27)
+  tenantId  String?  @map("tenant_id") @db.VarChar(27)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user StaffAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId, tenantId])
+  @@index([userId], map: "idx_user_groups_user")
+  @@index([groupId], map: "idx_user_groups_group")
+  @@map("user_groups")
+}
+
+model GroupPermission {
+  id           String           @id @default(cuid())
+  groupId      String           @map("group_id") @db.VarChar(27)
+  permissionId String           @map("permission_id") @db.VarChar(27)
+  effect       PermissionEffect @default(ALLOW)
+  conditions   Json? // JSON conditions for context-based permissions
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  group      Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, permissionId])
+  @@index([groupId], map: "idx_group_permissions_group")
+  @@index([permissionId], map: "idx_group_permissions_permission")
+  @@map("group_permissions")
+}
+
+model AuthVersion {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id") @db.VarChar(27)
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  staffAccount StaffAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_auth_versions_user")
+  @@map("auth_versions")
+}

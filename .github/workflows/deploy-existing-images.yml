@@ -1,0 +1,97 @@
+name: Deploy Existing Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (e.g., staging-abc123)'
+        required: true
+        type: string
+      services:
+        description: 'Select services to deploy (comma-separated, leave empty for all)'
+        required: false
+        type: string
+        default: ''
+
+env:
+  GITHUB_OWNER: ${{ github.repository_owner }}
+  IMAGE_TAG: ${{ github.event.inputs.image_tag }}
+
+jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          if [ -z "${{ github.event.inputs.services }}" ]; then
+            echo "matrix={\"service\":[\"accounts-service\",\"api-gateway\",\"booking-service\",\"content-service\",\"notification-service\",\"orchestrator-service\",\"provider-service\"]}" >> $GITHUB_OUTPUT
+          else
+            services='${{ github.event.inputs.services }}'
+            # Convert comma-separated string to JSON array
+            json_array=$(echo "$services" | jq -R -s -c 'split(",") | map(select(length > 0))')
+            echo "matrix={\"service\":$json_array}" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-services:
+    needs: setup-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJSON(needs.setup-matrix.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/detect-changes.sh
+          chmod +x scripts/deploy-to-vm.sh
+
+      - name: Deploy ${{ matrix.service }} to VM
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🚀 Deploying ${{ matrix.service }} with existing image tag: ${{ env.IMAGE_TAG }}"
+          ./scripts/deploy-to-vm.sh ${{ matrix.service }} ${{ env.IMAGE_TAG }}
+
+      - name: Deployment Summary
+        run: |
+          echo "## Service Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service**: ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "**VM**: ${{ secrets.VM_HOST }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Full Image Name**: ghcr.io/${{ env.GITHUB_OWNER }}/medicalink-${{ matrix.service }}:${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+
+  notify-completion:
+    needs: deploy-services
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Final Summary
+        run: |
+          echo "## Deploy Existing Images Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.deploy-services.result }}" = "success" ]; then
+            echo "**All Services Deployed Successfully**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All selected services have been successfully deployed using existing images." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Some Deployments Failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Some service deployments failed. Please check the logs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployment Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Services**: ${{ github.event.inputs.services || 'All services' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deploy Status**: ${{ needs.deploy-services.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY

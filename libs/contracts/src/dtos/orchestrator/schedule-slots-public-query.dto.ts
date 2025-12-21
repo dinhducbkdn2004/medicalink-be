@@ -1,0 +1,29 @@
+import { Transform } from 'class-transformer';
+import { IsOptional, IsString, Matches, IsBoolean } from 'class-validator';
+import { IsCuid } from '../../decorators';
+
+export class ScheduleSlotsPublicQueryDto {
+  @IsString({ message: 'serviceDate must be a string' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/i, {
+    message: 'serviceDate must be in YYYY-MM-DD format',
+  })
+  @Transform(({ value, obj }) => {
+    const v = value ?? obj?.date;
+    return typeof v === 'string' ? v.trim() : v;
+  })
+  serviceDate: string;
+
+  @IsOptional()
+  @IsString({ message: 'locationId must be a string' })
+  @IsCuid({ message: 'locationId must be a valid CUID' })
+  locationId?: string;
+
+  @IsOptional()
+  @IsBoolean({ message: 'allowPast must be a boolean' })
+  @Transform(({ value }) => {
+    if (typeof value === 'boolean') return value;
+    else if (typeof value === 'string') return value?.toLowerCase() === 'true';
+    else return false;
+  })
+  allowPast?: boolean;
+}

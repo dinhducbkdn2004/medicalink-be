@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CONTENT_DATABASE_URL")
+}
+
+enum QuestionStatus {
+  PENDING
+  ANSWERED
+  CLOSED
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model BlogCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique @db.VarChar(120)
+  description String? @db.Text
+  slug        String   @unique @db.VarChar(140)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  blogs Blog[]
+
+  @@map("blog_categories")
+}
+
+model Blog {
+  id           String     @id @default(cuid())
+  title        String     @db.VarChar(200)
+  slug         String     @unique @db.VarChar(220)
+  content      String     @db.Text
+  viewCount    Int        @default(0) @map("view_count")
+  categoryId   String     @map("category_id") @db.VarChar(27)
+  specialtyIds String[]   @map("specialty_ids") @db.VarChar(27)
+  authorId     String     @map("author_id") @db.VarChar(27)
+  status       PostStatus @default(DRAFT)
+  thumbnailUrl String?    @map("thumbnail_url") @db.VarChar(255)
+  publishedAt  DateTime?  @map("published_at") @db.Timestamptz(6)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category BlogCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("blogs")
+}
+
+model Question {
+  id          String         @id @default(cuid())
+  authorName  String         @default("Anonymous") @map("author_name") @db.VarChar(120)
+  authorEmail String?        @map("author_email") @db.VarChar(120)
+  title       String         @db.VarChar(200)
+  body        String         @db.Text
+  viewCount   Int            @default(0) @map("view_count")
+  status      QuestionStatus @default(PENDING)
+  specialtyId String?        @map("specialty_id") @db.VarChar(27)
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  answers Answer[]
+
+  @@map("questions")
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  questionId String   @map("question_id") @db.VarChar(27)
+  authorId   String   @map("author_id") @db.VarChar(27)
+  body       String   @db.Text
+  isAccepted Boolean  @default(false) @map("is_accepted")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId], map: "idx_answers_question")
+  @@index([authorId, createdAt], map: "idx_answers_author_created")
+  @@map("answers")
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  doctorId    String   @map("doctor_id") @db.VarChar(27)
+  authorName  String   @default("Anonymous") @map("author_name") @db.VarChar(120)
+  authorEmail String?  @map("author_email") @db.VarChar(120)
+  rating      Int      @db.SmallInt
+  title       String?  @db.VarChar(160)
+  body        String?  @db.Text
+  isPublic    Boolean  @default(true) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([doctorId], map: "idx_reviews_doctor")
+  @@index([rating], map: "idx_reviews_rating")
+  @@map("reviews")
+}
+
+model ReviewAnalysis {
+  id                String   @id @default(cuid())
+  doctorId          String   @map("doctor_id") @db.VarChar(27)
+  dateRange         String   @map("date_range") @db.VarChar(10)
+  includeNonPublic  Boolean  @default(false) @map("include_non_public")
+
+  // Statistical data
+  period1Total      Int      @map("period1_total")
+  period1Avg        Float    @map("period1_avg")
+  period2Total      Int      @map("period2_total")
+  period2Avg        Float    @map("period2_avg")
+  totalChange       Int      @map("total_change")
+  avgChange         Float    @map("avg_change")
+
+  // AI Analysis results
+  summary           String   @db.Text
+  advantages        String   @db.Text
+  disadvantages     String   @db.Text
+  changes           String   @db.Text
+  recommendations   String   @db.Text
+
+  // Metadata
+  createdBy         String   @map("created_by") @db.VarChar(27)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([doctorId, createdAt], map: "idx_review_analysis_doctor_created")
+  @@index([dateRange], map: "idx_review_analysis_date_range")
+  @@map("review_analyses")
+}
+
+// Asset entity type for polymorphic association
+enum AssetEntityType {
+  BLOG
+  QUESTION
+  REVIEW
+  DOCTOR
+  SPECIALTY
+}
+
+model Asset {
+  id         String          @id @default(cuid())
+  entityType AssetEntityType
+  entityId   String          @map("entity_id") @db.VarChar(27)
+  publicId   String          @unique @map("public_id") @db.VarChar(160)
+  metadata   Json?
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entityType, entityId], map: "idx_assets_entity")
+  @@map("assets")
+}

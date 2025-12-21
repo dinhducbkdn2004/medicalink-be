@@ -1,0 +1,28 @@
+# Notification Service
+services:
+  # Notification Service
+  notification-service:
+    build:
+      context: ..
+      dockerfile: apps/notification-service/Dockerfile
+    container_name: medicalink-notification
+    env_file:
+      - ../.env.production
+    environment:
+      - NODE_ENV=production
+      - NOTIFICATION_SERVICE_PORT=3005
+    networks:
+      - medicalink-network
+    command: ["node", "dist/apps/notification-service/main.js"]
+    restart: unless-stopped
+    logging:
+      driver: gcplogs
+      options:
+        gcp-project: "medicalink-06"
+        gcp-log-cmd: "true"
+        labels: "service,environment,component"
+        env: "NODE_ENV,APP_NAME"
+
+networks:
+  medicalink-network:
+    external: true

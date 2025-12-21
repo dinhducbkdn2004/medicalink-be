@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/api-gateway/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/api-gateway/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/api-gateway",
+  "projects": {
+    "api-gateway": {
+      "type": "application",
+      "root": "apps/api-gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/api-gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/api-gateway/tsconfig.app.json"
+      }
+    },
+    "accounts-service": {
+      "type": "application",
+      "root": "apps/accounts-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/accounts-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/accounts-service/tsconfig.app.json"
+      }
+    },
+    "provider-directory-service": {
+      "type": "application",
+      "root": "apps/provider-directory-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/provider-directory-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/provider-directory-service/tsconfig.app.json"
+      }
+    },
+    "booking-service": {
+      "type": "application",
+      "root": "apps/booking-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/booking-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/booking-service/tsconfig.app.json"
+      }
+    },
+    "content-service": {
+      "type": "application",
+      "root": "apps/content-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/content-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/content-service/tsconfig.app.json"
+      }
+    },
+    "notification-service": {
+      "type": "application",
+      "root": "apps/notification-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/notification-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/notification-service/tsconfig.app.json",
+        "assets": [
+          {
+            "include": "email/templates/**/*.hbs",
+            "outDir": "dist/apps/notification-service"
+          }
+        ]
+      }
+    },
+    "orchestrator-service": {
+      "type": "application",
+      "root": "apps/orchestrator-service",
+      "entryFile": "main",
+      "sourceRoot": "apps/orchestrator-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/orchestrator-service/tsconfig.app.json"
+      }
+    },
+    "contracts": {
+      "type": "library",
+      "root": "libs/contracts",
+      "entryFile": "index",
+      "sourceRoot": "libs/contracts/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/contracts/tsconfig.lib.json"
+      }
+    },
+    "redis": {
+      "type": "library",
+      "root": "libs/redis",
+      "entryFile": "index",
+      "sourceRoot": "libs/redis/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/redis/tsconfig.lib.json"
+      }
+    },
+    "domain-errors": {
+      "type": "library",
+      "root": "libs/domain-errors",
+      "entryFile": "index",
+      "sourceRoot": "libs/domain-errors/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/domain-errors/tsconfig.lib.json"
+      }
+    },
+    "error-adapters": {
+      "type": "library",
+      "root": "libs/error-adapters",
+      "entryFile": "index",
+      "sourceRoot": "libs/error-adapters/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/error-adapters/tsconfig.lib.json"
+      }
+    },
+    "rabbitmq": {
+      "type": "library",
+      "root": "libs/rabbitmq",
+      "entryFile": "index",
+      "sourceRoot": "libs/rabbitmq/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/rabbitmq/tsconfig.lib.json"
+      }
+    },
+    "repositories": {
+      "type": "library",
+      "root": "libs/repositories",
+      "entryFile": "index",
+      "sourceRoot": "libs/repositories/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/repositories/tsconfig.lib.json"
+      }
+    }
+  }
+}

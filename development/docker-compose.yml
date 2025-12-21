@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: medicalink-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: appdb
+      TZ: "UTC"
+    ports:
+      - "5432:5432"
+    volumes:
+      - medicalink_db:/var/lib/postgresql/data
+      - ../scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:latest
+    container_name: medicalink-redis
+    # (A) Using named volume (persistent storage):
+    volumes:
+      - medicalink_redis:/data
+    # (B) Using tmpfs (in-memory storage, data lost on container restart):
+    # tmpfs:
+    #   - /data
+    command: [
+      "redis-server",
+      "--appendonly", "yes",
+      "--appendfsync", "everysec",
+      "--save", "900", "1",
+      "--save", "300", "10",
+      "--save", "60", "10000",
+    ]
+    ports:
+      - "15796:6379"
+    # Authentication (uncomment to enable):
+    # command: >
+    #   sh -c "redis-server --requirepass yourStrongPass
+    #          --appendonly yes --appendfsync everysec
+    #          --save 900 1 --save 300 10 --save 60 10000"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: medicalink-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+      RABBITMQ_DEFAULT_VHOST: /
+      RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - medicalink_rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - medicalink-network
+
+volumes:
+  medicalink_db:
+  medicalink_redis:
+  medicalink_rabbitmq:
+
+networks:
+  medicalink-network:
+    driver: bridge

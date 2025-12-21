@@ -1,0 +1,27 @@
+# Accounts Service
+services:
+  # Accounts Service
+  accounts-service:
+    build:
+      context: ..
+      dockerfile: apps/accounts-service/Dockerfile
+    container_name: medicalink-accounts
+    env_file:
+      - ../.env.production
+    environment:
+      - NODE_ENV=production
+      - ACCOUNTS_SERVICE_PORT=3001
+    networks:
+      - medicalink-network
+    command: ["node", "dist/apps/accounts-service/main.js"]
+    restart: unless-stopped
+    logging:
+      driver: gcplogs
+      options:
+        gcp-project: "medicalink-06"
+        gcp-log-cmd: "true"
+        labels: "service,environment,component"
+
+networks:
+  medicalink-network:
+    external: true

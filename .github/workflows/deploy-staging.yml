@@ -1,0 +1,226 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch:
+    inputs:
+      force_rebuild_all:
+        description: 'Force rebuild all services'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  GITHUB_OWNER: ${{ github.repository_owner }}
+  IMAGE_TAG: staging-${{ github.sha }}
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/detect-changes.sh
+          chmod +x scripts/deploy-to-vm.sh
+
+      - name: Detect changed services
+        id: detect
+        run: |
+          if [ "${{ github.event.inputs.force_rebuild_all }}" = "true" ]; then
+            echo "Force rebuild all services requested"
+            SERVICES="accounts-service api-gateway booking-service content-service notification-service orchestrator-service provider-service"
+          else
+            echo "Detecting changes..."
+            SERVICES=$(./scripts/detect-changes.sh 2>/dev/null)
+          fi
+          
+          if [ -z "$SERVICES" ]; then
+            echo "No services to build"
+            echo "services=" >> $GITHUB_OUTPUT
+          else
+            echo "Services to build: $SERVICES"
+            echo "services=$SERVICES" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Summary
+        run: |
+          echo "## Change Detection Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -z "${{ steps.detect.outputs.services }}" ]; then
+            echo "No services need rebuilding" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Services to build:" >> $GITHUB_STEP_SUMMARY
+            for service in ${{ steps.detect.outputs.services }}; do
+              echo "- $service" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+  build-services:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: 
+          - accounts-service
+          - api-gateway
+          - booking-service
+          - content-service
+          - notification-service
+          - orchestrator-service
+          - provider-service
+      fail-fast: false
+    steps:
+      - name: Check if service needs building
+        id: check-service
+        run: |
+          SERVICES="${{ needs.detect-changes.outputs.services }}"
+          if [[ " $SERVICES " =~ " ${{ matrix.service }} " ]]; then
+            echo "needs_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "needs_build=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout repository
+        if: steps.check-service.outputs.needs_build == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        if: steps.check-service.outputs.needs_build == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: steps.check-service.outputs.needs_build == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ env.GITHUB_OWNER }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        if: steps.check-service.outputs.needs_build == 'true'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ env.GITHUB_OWNER }}/medicalink-${{ matrix.service }}
+          tags: |
+            type=raw,value=${{ env.IMAGE_TAG }}
+            type=raw,value=${{ env.IMAGE_TAG }}-{{sha}}
+
+      - name: Get service directory
+        if: steps.check-service.outputs.needs_build == 'true'
+        id: service-dir
+        run: |
+          case "${{ matrix.service }}" in
+            provider-service)
+              echo "service_dir=provider-directory-service" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "service_dir=${{ matrix.service }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Build and push Docker image
+        if: steps.check-service.outputs.needs_build == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/${{ steps.service-dir.outputs.service_dir }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  deploy-services:
+    needs: [detect-changes, build-services]
+    if: needs.detect-changes.outputs.services != ''
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: 
+          - accounts-service
+          - api-gateway
+          - booking-service
+          - content-service
+          - notification-service
+          - orchestrator-service
+          - provider-service
+      fail-fast: false
+    steps:
+      - name: Check if service needs deployment
+        id: check-service
+        run: |
+          SERVICES="${{ needs.detect-changes.outputs.services }}"
+          if [[ " $SERVICES " =~ " ${{ matrix.service }} " ]]; then
+            echo "needs_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "needs_deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout repository
+        if: steps.check-service.outputs.needs_deploy == 'true'
+        uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        if: steps.check-service.outputs.needs_deploy == 'true'
+        run: |
+          chmod +x scripts/detect-changes.sh
+          chmod +x scripts/deploy-to-vm.sh
+
+      - name: Deploy ${{ matrix.service }} to VM
+        if: steps.check-service.outputs.needs_deploy == 'true'
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/deploy-to-vm.sh ${{ matrix.service }} ${{ env.IMAGE_TAG }}
+
+      - name: Deployment Summary
+        if: steps.check-service.outputs.needs_deploy == 'true'
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Successfully deployed ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ghcr.io/${{ env.GITHUB_OWNER }}/medicalink-${{ matrix.service }}:${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **VM**: ${{ secrets.VM_HOST }}" >> $GITHUB_STEP_SUMMARY
+
+  notify-completion:
+    needs: [detect-changes, build-services, deploy-services]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Workflow Summary
+        run: |
+          echo "## Staging Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.detect-changes.outputs.services }}" = "" ]; then
+            echo "No changes detected - no deployment needed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Services deployed:" >> $GITHUB_STEP_SUMMARY
+            for service in ${{ needs.detect-changes.outputs.services }}; do
+              echo "- $service" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Registry**: ghcr.io/${{ env.GITHUB_OWNER }}" >> $GITHUB_STEP_SUMMARY

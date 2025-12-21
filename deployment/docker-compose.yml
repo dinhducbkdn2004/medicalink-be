@@ -1,0 +1,15 @@
+# Main Docker Compose file that includes all services
+# This file orchestrates the entire MedicaLink microservices architecture
+
+include:
+  # Infrastructure services (database, cache, message broker, load balancer)
+  - docker-compose.infrastructure.yml
+  
+  # Application services
+  - docker-compose.gateway.yml
+  - docker-compose.accounts.yml
+  - docker-compose.provider.yml
+  - docker-compose.booking.yml
+  - docker-compose.content.yml
+  - docker-compose.notification.yml
+  - docker-compose.orchestrator.yml

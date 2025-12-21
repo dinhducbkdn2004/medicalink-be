@@ -1,0 +1,28 @@
+# Provider Directory Service
+services:
+  # Provider Directory Service
+  provider-service:
+    build:
+      context: ..
+      dockerfile: apps/provider-directory-service/Dockerfile
+    container_name: medicalink-provider
+    env_file:
+      - ../.env.production
+    environment:
+      - NODE_ENV=production
+      - PROVIDER_SERVICE_PORT=3002
+    networks:
+      - medicalink-network
+    command: ["node", "dist/apps/provider-directory-service/main.js"]
+    restart: unless-stopped
+    logging:
+      driver: gcplogs
+      options:
+        gcp-project: "medicalink-06"
+        gcp-log-cmd: "true"
+        labels: "service,environment,component"
+        env: "NODE_ENV,APP_NAME"
+
+networks:
+  medicalink-network:
+    external: true

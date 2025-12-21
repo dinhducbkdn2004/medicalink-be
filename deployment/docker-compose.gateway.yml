@@ -1,0 +1,30 @@
+# API Gateway Service
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: apps/api-gateway/Dockerfile
+    container_name: medicalink-gateway
+    env_file:
+      - ../.env.production
+    environment:
+      - NODE_ENV=production
+      - API_GATEWAY_PORT=3000
+    ports:
+      - "3000:3000"
+    networks:
+      - medicalink-network
+    command: ["node", "dist/apps/api-gateway/main.js"]
+    restart: unless-stopped
+    logging:
+      driver: gcplogs
+      options:
+        gcp-project: "medicalink-06"
+        gcp-log-cmd: "true"
+        labels: "service,environment,component"
+        env: "NODE_ENV,APP_NAME"
+
+networks:
+  medicalink-network:
+    external: true
