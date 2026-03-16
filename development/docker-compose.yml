@@ -1,7 +1,9 @@
 services:
   postgres:
-    image: postgres:latest
+    # Đã đổi từ :latest sang :15-alpine cho nhẹ và ổn định
+    image: postgres:15-alpine
     container_name: medicalink-db
+    restart: always # Tự động chạy lại nếu lỗi hoặc khởi động lại máy
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -26,16 +28,17 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - medicalink-network
 
   redis:
-    image: redis:latest
+    # Đã đổi từ :latest sang :7-alpine
+    image: redis:7-alpine
     container_name: medicalink-redis
+    restart: always
     # (A) Using named volume (persistent storage):
     volumes:
       - medicalink_redis:/data
-    # (B) Using tmpfs (in-memory storage, data lost on container restart):
-    # tmpfs:
-    #   - /data
     command: [
       "redis-server",
       "--appendonly", "yes",
@@ -46,20 +49,18 @@ services:
     ]
     ports:
       - "15796:6379"
-    # Authentication (uncomment to enable):
-    # command: >
-    #   sh -c "redis-server --requirepass yourStrongPass
-    #          --appendonly yes --appendfsync everysec
-    #          --save 900 1 --save 300 10 --save 60 10000"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
+    networks:
+      - medicalink-network
 
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
     container_name: medicalink-rabbitmq
+    restart: always
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
