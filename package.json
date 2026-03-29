@@ -46,7 +46,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/medicalink-microservice/test/jest-e2e.json",
-    "script": "node ./scripts/run-script.js"
+    "script": "node ./scripts/run-script.js",
+    "seed": "npx ts-node ./scripts/seed.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
