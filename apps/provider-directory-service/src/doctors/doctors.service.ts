@@ -286,7 +286,6 @@ export class DoctorsService {
       updateData.isMale = payload.isMale;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const result = await this.doctorRepo.update(doctor.id, updateData);
 
     // Synchronous cache invalidation

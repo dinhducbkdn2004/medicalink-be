@@ -51,3 +51,15 @@ export * from './analyze-review.dto';
 export * from './review-analysis-response.dto';
 export * from './review-analysis-minimal.dto';
 export * from './get-review-analyses-query.dto';
+
+// FAQ DTOs
+export * from './create-faq.dto';
+export * from './update-faq.dto';
+export * from './faq-response.dto';
+export * from './get-faqs-query.dto';
+
+// Testimonial DTOs
+export * from './create-testimonial.dto';
+export * from './update-testimonial.dto';
+export * from './testimonial-response.dto';
+export * from './get-testimonials-query.dto';

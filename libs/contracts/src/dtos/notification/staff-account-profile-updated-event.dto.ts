@@ -5,6 +5,8 @@
 export interface StaffAccountProfileUpdatedEventDto {
   staffId: string;
   fullName?: string;
+  email?: string;
+  phone?: string;
   isMale?: boolean;
   role: string;
   updatedAt: string;

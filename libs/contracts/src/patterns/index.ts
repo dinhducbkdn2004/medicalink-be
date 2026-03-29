@@ -12,6 +12,8 @@ export * from './work-locations.patterns';
 export * from './office-hours.patterns';
 export * from './booking.patterns';
 export * from './patients.patterns';
+export * from './faqs.patterns';
+export * from './testimonials.patterns';
 
 export * from './orchestrator.patterns';
 export * from './orchestrator.events';

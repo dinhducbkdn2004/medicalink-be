@@ -153,3 +153,29 @@ model Asset {
   @@index([entityType, entityId], map: "idx_assets_entity")
   @@map("assets")
 }
+
+model Faq {
+  id          String   @id @default(cuid())
+  question    String   @db.VarChar(255)
+  answer      String   @db.Text
+  order       Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("faqs")
+}
+
+model Testimonial {
+  id          String   @id @default(cuid())
+  authorName  String   @map("author_name") @db.VarChar(120)
+  authorAvatar String? @map("author_avatar") @db.VarChar(255)
+  authorTitle  String? @map("author_title") @db.VarChar(120)
+  content     String   @db.Text
+  rating      Int?     @default(5) @db.SmallInt
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("testimonials")
+}

@@ -16,6 +16,7 @@ export const ORCHESTRATOR_PATTERNS = {
 
   // Doctor composition (read)
   DOCTOR_GET_COMPOSITE: 'orchestrator.doctor.getComposite',
+  DOCTOR_GET_COMPOSITE_BY_ID: 'orchestrator.doctor.getCompositeById',
   DOCTOR_LIST_COMPOSITE: 'orchestrator.doctor.listComposite',
 
   // Blog composition (read)
