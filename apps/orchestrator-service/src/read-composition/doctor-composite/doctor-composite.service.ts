@@ -8,17 +8,15 @@ import {
   DOCTOR_ACCOUNTS_PATTERNS,
   DOCTOR_PROFILES_PATTERNS,
   STAFFS_PATTERNS,
-} from '@app/contracts';
-import {
-  DoctorCompositeQueryDto,
+  StaffQueryDto,
+  DoctorSearchCompositeQueryDto,
   DoctorCompositeResultDto,
   DoctorCompositeListResultDto,
   DoctorCompositeData,
   DoctorProfileData,
-} from './dto';
+} from '@app/contracts';
 import { IStaffAccount } from '@app/contracts/interfaces';
 import { BaseCompositeService } from '../base';
-import { StaffQueryDto } from '@app/contracts';
 
 /**
  * Service for composing doctor data from multiple sources
@@ -27,7 +25,7 @@ import { StaffQueryDto } from '@app/contracts';
 @Injectable()
 export class DoctorCompositeService extends BaseCompositeService<
   DoctorCompositeData,
-  DoctorCompositeQueryDto
+  DoctorSearchCompositeQueryDto
 > {
   protected readonly logger = new Logger(DoctorCompositeService.name);
   protected readonly cachePrefix = CACHE_PREFIXES.DOCTOR_COMPOSITE;
@@ -48,7 +46,7 @@ export class DoctorCompositeService extends BaseCompositeService<
   /**
    * Get complete doctor data by staff account ID
    */
-  async getDoctorComposite(
+  async getDoctorCompositeByAccountId(
     staffAccountId: string,
     skipCache = false,
   ): Promise<DoctorCompositeResultDto> {
@@ -77,6 +75,63 @@ export class DoctorCompositeService extends BaseCompositeService<
       },
       (account, profile) => this.mergeData(account, profile),
     );
+  }
+
+  /**
+   * Get complete doctor data by doctor profile ID
+   */
+  async getDoctorCompositeByDoctorId(
+    doctorId: string,
+    skipCache = false,
+  ): Promise<DoctorCompositeResultDto> {
+    const cacheKey = this.buildEntityCacheKey(`doc:${doctorId}`);
+
+    // Check cache first
+    if (!skipCache) {
+      const cached = await this.cacheService.get<DoctorCompositeData>(cacheKey);
+      if (cached) {
+        return {
+          data: cached,
+          sources: [
+            { service: 'provider-directory-service', fetched: false },
+            { service: 'accounts-service', fetched: false },
+          ],
+          cache: { hit: true, ttl: CACHE_TTL.MEDIUM, key: cacheKey },
+          timestamp: new Date(),
+        };
+      }
+    }
+
+    // 1. Fetch profile first to get staffAccountId
+    const profile = await this.clientHelper.send<DoctorProfileData>(
+      this.providerClient,
+      DOCTOR_PROFILES_PATTERNS.FIND_ONE,
+      doctorId,
+      { timeoutMs: 8000 },
+    );
+
+    // 2. Fetch account using staffAccountId from profile
+    const account = await this.clientHelper.send<IStaffAccount>(
+      this.accountsClient,
+      DOCTOR_ACCOUNTS_PATTERNS.FIND_ONE,
+      profile.staffAccountId,
+      { timeoutMs: 8000 },
+    );
+
+    const compositeData = this.mergeData(account, profile);
+
+    // Cache the result
+    await this.cacheService.set(cacheKey, compositeData, CACHE_TTL.MEDIUM);
+
+    return {
+      data: compositeData,
+      sources: [
+        { service: 'provider-directory-service', fetched: true },
+        { service: 'accounts-service', fetched: true },
+      ],
+      cache: { hit: false, ttl: CACHE_TTL.MEDIUM, key: cacheKey },
+      timestamp: new Date(),
+    };
   }
 
   // Admin list composite: use StaffQueryDto and DO NOT sanitize (return full metadata)
@@ -140,16 +195,13 @@ export class DoctorCompositeService extends BaseCompositeService<
 
   /**
    * Sanitize composite item for public consumption
-   * - Remove email, phone
-   * - Remove account/profile timestamps
-   * - Ensure specialties/workLocations do not carry createdAt/updatedAt
+   * - Remove sensitive account/profile timestamps if needed
+   * - Keep email and phone as they are now merged from account service
    */
-  private sanitizePublicComposite(
+  public sanitizePublicComposite(
     item: DoctorCompositeData,
   ): DoctorCompositeData {
     const {
-      email,
-      phone,
       createdAt,
       updatedAt,
       profileCreatedAt,
@@ -188,9 +240,9 @@ export class DoctorCompositeService extends BaseCompositeService<
       id: account.id,
       fullName: account.fullName,
       email: account.email,
-      phone: account.phone,
+      phone: account.phone as string | null,
       isMale: account.isMale,
-      dateOfBirth: account.dateOfBirth,
+      dateOfBirth: account.dateOfBirth ? new Date(account.dateOfBirth) : null,
       role: 'DOCTOR',
 
       // Profile data

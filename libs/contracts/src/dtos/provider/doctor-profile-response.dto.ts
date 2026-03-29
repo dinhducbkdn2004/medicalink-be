@@ -4,7 +4,7 @@ export class DoctorProfileResponseDto {
   id: string;
   staffAccountId: string;
   fullName: string;
-  isMale?: boolean;
+  isMale: boolean | null;
   isActive: boolean;
   appointmentDuration: number;
   degree?: string;
@@ -15,8 +15,8 @@ export class DoctorProfileResponseDto {
   research?: string;
   trainingProcess: string[];
   experience: string[];
-  avatarUrl?: string;
-  portrait?: string;
+  avatarUrl: string | null;
+  portrait: string | null;
   createdAt: Date;
   updatedAt: Date;
   specialties?: SpecialtyDto[];

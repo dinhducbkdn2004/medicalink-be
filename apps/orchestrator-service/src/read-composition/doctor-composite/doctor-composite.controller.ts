@@ -11,15 +11,23 @@ export class DoctorCompositeController {
   ) {}
 
   @MessagePattern(ORCHESTRATOR_PATTERNS.DOCTOR_GET_COMPOSITE)
-  async getDoctorComposite(
+  async getDoctorCompositeByAccountId(
     @Payload() payload: { staffAccountId: string; skipCache?: boolean },
   ) {
-    const result = await this.doctorCompositeService.getDoctorComposite(
+    return this.doctorCompositeService.getDoctorCompositeByAccountId(
       payload.staffAccountId,
       payload.skipCache,
     );
+  }
 
-    return result;
+  @MessagePattern(ORCHESTRATOR_PATTERNS.DOCTOR_GET_COMPOSITE_BY_ID)
+  async getDoctorCompositeByDoctorId(
+    @Payload() payload: { doctorId: string; skipCache?: boolean },
+  ) {
+    return this.doctorCompositeService.getDoctorCompositeByDoctorId(
+      payload.doctorId,
+      payload.skipCache,
+    );
   }
 
   @MessagePattern(ORCHESTRATOR_PATTERNS.DOCTOR_LIST_COMPOSITE)

@@ -38,12 +38,12 @@ export class SpecialtiesController {
 
   @Public()
   @Get('public')
-  findAllPublic() {
+  findAllPublic(@Query() query: SpecialtyQueryDto) {
     const publicQuery = {
-      page: 1,
-      limit: 100,
-      sortBy: 'name',
-      sortOrder: 'asc' as const,
+      page: query.page || 1,
+      limit: query.limit || 10,
+      sortBy: query.sortBy || 'name',
+      sortOrder: query.sortOrder || ('asc' as const),
     };
 
     return this.microserviceService.sendWithTimeout(

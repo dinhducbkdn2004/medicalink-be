@@ -133,6 +133,8 @@ export class AccountEventHandler {
         {
           staffAccountId: data.staffId,
           fullName: data.fullName,
+          email: data.email,
+          phone: data.phone,
           isMale: data.isMale,
         },
         { timeoutMs: 8000 },

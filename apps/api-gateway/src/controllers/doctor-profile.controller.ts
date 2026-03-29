@@ -26,9 +26,9 @@ import type {
   ToggleDoctorActiveBodyDto,
   JwtPayloadDto,
   ScheduleSlotsPublicQueryDto,
-  DoctorProfileResponseDto,
   MonthSlotsQueryDto,
   MonthAvailabilityResponseDto,
+  DoctorCompositeData,
 } from '@app/contracts/dtos';
 import { MicroserviceService } from '../utils/microservice.service';
 import {
@@ -37,9 +37,11 @@ import {
 } from '@app/contracts/patterns';
 
 type DoctorPublicListItem = Pick<
-  DoctorProfileResponseDto,
+  DoctorCompositeData,
   | 'id'
   | 'fullName'
+  | 'email'
+  | 'phone'
   | 'isMale'
   | 'degree'
   | 'position'
@@ -51,9 +53,23 @@ type DoctorPublicListItem = Pick<
 >;
 
 type DoctorPublicProfile = Omit<
-  DoctorProfileResponseDto,
-  'staffAccountId' | 'isActive' | 'createdAt' | 'updatedAt'
->;
+  DoctorCompositeData,
+  | 'id'
+  | 'fullName'
+  | 'email'
+  | 'phone'
+  | 'isActive'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'profileCreatedAt'
+  | 'profileUpdatedAt'
+> & {
+  // We want to keep these at the top level for the profile
+  id: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+};
 
 @Controller('doctors/profile')
 export class DoctorProfileController {
@@ -75,17 +91,15 @@ export class DoctorProfileController {
       isActive: true,
     };
 
-    const result = await this.microserviceService.sendWithTimeout<
-      PaginatedResponse<DoctorProfileResponseDto>
-    >(
-      this.providerDirectoryClient,
-      DOCTOR_PROFILES_PATTERNS.GET_PUBLIC_LIST,
+    const result = await this.microserviceService.sendWithTimeout<any>(
+      this.orchestratorClient,
+      ORCHESTRATOR_PATTERNS.DOCTOR_LIST_COMPOSITE,
       filters,
-      { timeoutMs: 12000 },
+      { timeoutMs: 15000 },
     );
 
     return {
-      data: result.data.map((doctor) => this.mapToPublicListItem(doctor)),
+      data: result.data.map((doctor: any) => this.mapToPublicListItem(doctor)),
       meta: result.meta,
     };
   }
@@ -95,15 +109,14 @@ export class DoctorProfileController {
   async getPublicProfile(
     @Param('id') id: string,
   ): Promise<DoctorPublicProfile> {
-    const doctor =
-      await this.microserviceService.sendWithTimeout<DoctorProfileResponseDto>(
-        this.providerDirectoryClient,
-        DOCTOR_PROFILES_PATTERNS.FIND_ONE,
-        id,
-        { timeoutMs: 10000 },
-      );
+    const result = await this.microserviceService.sendWithTimeout<any>(
+      this.orchestratorClient,
+      ORCHESTRATOR_PATTERNS.DOCTOR_GET_COMPOSITE_BY_ID,
+      { doctorId: id },
+      { timeoutMs: 10000 },
+    );
 
-    return this.mapToPublicProfile(doctor);
+    return this.mapToPublicProfile(result.data);
   }
 
   @RequirePermission('doctors', 'read', { isSelf: true })
@@ -225,12 +238,12 @@ export class DoctorProfileController {
     );
   }
 
-  private mapToPublicListItem(
-    doctor: DoctorProfileResponseDto,
-  ): DoctorPublicListItem {
+  private mapToPublicListItem(doctor: any): DoctorPublicListItem {
     return {
-      id: doctor.id,
+      id: doctor.profileId || doctor.id,
       fullName: doctor.fullName,
+      email: doctor.email,
+      phone: doctor.phone,
       isMale: doctor.isMale,
       degree: doctor.degree,
       position: doctor.position,
@@ -242,15 +255,20 @@ export class DoctorProfileController {
     };
   }
 
-  private mapToPublicProfile(
-    doctor: DoctorProfileResponseDto,
-  ): DoctorPublicProfile {
+  private mapToPublicProfile(doctor: any): DoctorPublicProfile {
     const {
       isActive: _isActive,
       createdAt: _createdAt,
       updatedAt: _updatedAt,
+      profileCreatedAt: _pCreatedAt,
+      profileUpdatedAt: _pUpdatedAt,
+      staffAccountId: _staffAccountId,
       ...publicDoctor
     } = doctor;
-    return publicDoctor as DoctorPublicProfile;
+
+    return {
+      ...publicDoctor,
+      id: doctor.profileId || doctor.id, // Ensure we return the profile ID as the primary ID for the public view
+    } as DoctorPublicProfile;
   }
 }
