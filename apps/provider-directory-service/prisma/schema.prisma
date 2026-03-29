@@ -66,6 +66,7 @@ model Doctor {
   degree          String?  @db.VarChar(100)
   position        String[]
   introduction    String?  @db.Text
+  introductionText String?  @db.Text @map("introduction_text")
   memberships     String[]
   awards          String[]
   research        String?  @db.Text
