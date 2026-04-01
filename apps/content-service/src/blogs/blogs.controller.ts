@@ -8,7 +8,7 @@ import {
   CreateBlogCategoryDto,
   UpdateBlogCategoryDto,
 } from '@app/contracts';
-import { BlogQueryDto } from '@app/contracts';
+import { BlogQueryDto, BlogCategoryQueryDto } from '@app/contracts';
 import {
   BLOGS_PATTERNS,
   BLOG_CATEGORIES_PATTERNS,
@@ -77,8 +77,10 @@ export class BlogsController {
   }
 
   @MessagePattern(BLOG_CATEGORIES_PATTERNS.GET_LIST)
-  async getBlogCategories() {
-    return this.blogsService.getBlogCategories();
+  async getBlogCategories(@Payload() query: BlogCategoryQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    return this.blogsService.getBlogCategories({ ...query, page, limit });
   }
 
   @MessagePattern(BLOG_CATEGORIES_PATTERNS.CREATE)

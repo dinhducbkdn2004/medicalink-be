@@ -65,6 +65,7 @@ export const QUEUE_NAMES = {
   CONTENT_QUEUE: 'content_queue',
   NOTIFICATION_QUEUE: 'notification_queue',
   ORCHESTRATOR_QUEUE: 'orchestrator_queue',
+  AI_SERVICE_QUEUE: 'ai_service_queue',
 
   // Event queues
   USER_EVENTS_QUEUE: 'user_events_queue',

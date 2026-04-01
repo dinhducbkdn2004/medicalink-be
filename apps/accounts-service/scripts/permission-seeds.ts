@@ -235,6 +235,56 @@ const CORE_PERMISSIONS = [
     action: 'manage',
     description: 'Full blog management access',
   },
+  {
+    resource: 'faqs',
+    action: 'create',
+    description: 'Create FAQ entries for landing/support',
+  },
+  {
+    resource: 'faqs',
+    action: 'read',
+    description: 'View and list FAQ (admin)',
+  },
+  {
+    resource: 'faqs',
+    action: 'update',
+    description: 'Update FAQ entries',
+  },
+  {
+    resource: 'faqs',
+    action: 'delete',
+    description: 'Delete FAQ entries',
+  },
+  {
+    resource: 'faqs',
+    action: 'manage',
+    description: 'Full FAQ management access',
+  },
+  {
+    resource: 'testimonials',
+    action: 'create',
+    description: 'Create testimonials',
+  },
+  {
+    resource: 'testimonials',
+    action: 'read',
+    description: 'View and list testimonials (admin)',
+  },
+  {
+    resource: 'testimonials',
+    action: 'update',
+    description: 'Update testimonials',
+  },
+  {
+    resource: 'testimonials',
+    action: 'delete',
+    description: 'Delete testimonials',
+  },
+  {
+    resource: 'testimonials',
+    action: 'manage',
+    description: 'Full testimonials management access',
+  },
   // Q&A management
   {
     resource: 'questions',
@@ -360,6 +410,8 @@ const ROLE_PERMISSION_MAPPING = {
       'office-hours:manage',
       'schedules:manage',
       'blogs:manage',
+      'faqs:manage',
+      'testimonials:manage',
       'questions:manage',
       'answers:manage',
       'reviews:manage',
@@ -380,6 +432,8 @@ const ROLE_PERMISSION_MAPPING = {
       'schedules:manage',
       'office-hours:manage',
       'blogs:manage',
+      'faqs:manage',
+      'testimonials:manage',
       'questions:manage',
       'answers:manage',
       'reviews:manage',

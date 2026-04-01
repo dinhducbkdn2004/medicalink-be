@@ -9,6 +9,7 @@ import {
   BlogResponseDto,
   BlogCategoryResponseDto,
   BlogQueryDto,
+  BlogCategoryQueryDto,
 } from '@app/contracts';
 import {
   NotFoundError,
@@ -217,8 +218,23 @@ export class BlogsService {
     }
   }
 
-  async getBlogCategories(): Promise<BlogCategoryResponseDto[]> {
-    return this.blogRepository.findAllCategories();
+  async getBlogCategories(params: BlogCategoryQueryDto) {
+    const result = await this.blogRepository.findCategories(params);
+    const page = result.page;
+    const limit = result.limit;
+    const hasNext = page * limit < result.total;
+    const hasPrev = page > 1;
+    return {
+      data: result.data,
+      meta: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+        hasNext,
+        hasPrev,
+      },
+    };
   }
 
   async createBlogCategory(

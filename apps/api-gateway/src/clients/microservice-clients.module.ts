@@ -66,6 +66,16 @@ import { RabbitMQConfig, QUEUE_NAMES } from '@app/rabbitmq';
           ),
         inject: [ConfigService],
       },
+      {
+        name: 'AI_SERVICE',
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) =>
+          RabbitMQConfig.createAiRpcClientConfig(
+            configService,
+            QUEUE_NAMES.AI_SERVICE_QUEUE,
+          ),
+        inject: [ConfigService],
+      },
     ]),
   ],
   exports: [ClientsModule],

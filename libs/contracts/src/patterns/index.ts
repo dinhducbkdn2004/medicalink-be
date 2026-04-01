@@ -19,3 +19,4 @@ export * from './orchestrator.patterns';
 export * from './orchestrator.events';
 export * from './provider.patterns';
 export * from './notification.patterns';
+export * from './ai.patterns';
