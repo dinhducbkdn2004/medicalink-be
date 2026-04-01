@@ -6,7 +6,7 @@ import {
   UpdateBlogDto,
 } from '@app/contracts';
 import { PostStatus, Prisma } from '../../prisma/generated/client';
-import { BlogQueryDto } from '@app/contracts';
+import { BlogQueryDto, BlogCategoryQueryDto } from '@app/contracts';
 import { slugify } from '@app/commons/utils';
 
 @Injectable()
@@ -257,16 +257,46 @@ export class BlogRepository {
     return this.transformCategoryResponse(category);
   }
 
-  async findAllCategories(): Promise<BlogCategoryResponseDto[]> {
-    const categories = await this.prisma.blogCategory.findMany({
-      orderBy: {
-        name: 'asc',
-      },
-    });
+  async findCategories(params: BlogCategoryQueryDto) {
+    const safePage = params.page ?? 1;
+    const safeLimit = params.limit ?? 10;
+    const skip = (safePage - 1) * safeLimit;
+    const { search, sortBy, sortOrder } = params;
 
-    return categories.map((category) =>
-      this.transformCategoryResponse(category),
-    );
+    const where: Prisma.BlogCategoryWhereInput = {};
+    if (search?.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { slug: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const orderField = sortBy === 'createdAt' ? 'createdAt' : 'name';
+    const orderDir =
+      sortOrder === 'desc' ? Prisma.SortOrder.desc : Prisma.SortOrder.asc;
+
+    const [categories, total] = await Promise.all([
+      this.prisma.blogCategory.findMany({
+        where,
+        skip,
+        take: safeLimit,
+        orderBy: { [orderField]: orderDir },
+      }),
+      this.prisma.blogCategory.count({ where }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+
+    return {
+      data: categories.map((category) =>
+        this.transformCategoryResponse(category),
+      ),
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages,
+    };
   }
 
   async findCategoryById(id: string): Promise<BlogCategoryResponseDto | null> {

@@ -84,6 +84,28 @@ services:
         gcp-log-cmd: "true"
         labels: "service,environment,component"
 
+  # Qdrant (vector DB cho medicalink-ai-service — chỉ nội bộ network, không bắt buộc Qdrant Cloud)
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: medicalink-qdrant
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - medicalink-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging:
+      driver: gcplogs
+      options:
+        gcp-project: "medicalink-06"
+        gcp-log-cmd: "true"
+        labels: "service,environment,component"
+
   # Nginx Load Balancer
   nginx:
     image: nginx:alpine
@@ -112,3 +134,4 @@ volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
+  qdrant_data:

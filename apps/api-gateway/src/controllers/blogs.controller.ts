@@ -25,7 +25,11 @@ import {
   CreateBlogCategoryDto,
   UpdateBlogCategoryDto,
 } from '@app/contracts';
-import { BlogPublicQueryDto, BlogQueryDto } from '@app/contracts/dtos/content';
+import {
+  BlogPublicQueryDto,
+  BlogQueryDto,
+  BlogCategoryQueryDto,
+} from '@app/contracts/dtos/content';
 import { MicroserviceService } from '../utils/microservice.service';
 import { DeleteBlogCategoryQueryDto } from '@app/contracts/dtos/content/delete-blog-category-query.dto';
 import {
@@ -46,7 +50,7 @@ export class BlogsController {
   // Public - list categories
   @Public()
   @Get('categories')
-  async listCategories(@Query() query: any) {
+  async listCategories(@Query() query: BlogCategoryQueryDto) {
     return this.microserviceService.sendWithTimeout(
       this.contentClient,
       BLOG_CATEGORIES_PATTERNS.GET_LIST,

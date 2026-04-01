@@ -27,6 +27,35 @@ export class RabbitMQConfig {
     };
   }
 
+  /**
+   * RPC tới AI worker (Python aio-pika): hàng đợi chỉ durable, không TTL —
+   * trùng `declare_queue(..., durable=True)` để tránh PRECONDITION_FAILED
+   * khi queue đã tồn tại không có x-message-ttl.
+   */
+  static createAiRpcClientConfig(
+    configService: ConfigService,
+    queueName: string,
+  ) {
+    const url = configService.getOrThrow<string>('RABBITMQ_URL', {
+      infer: true,
+    });
+    return {
+      transport: Transport.RMQ as any,
+      options: {
+        urls: [url],
+        queue: queueName,
+        queueOptions: {
+          durable: true,
+        },
+        socketOptions: {
+          heartbeatIntervalInSeconds: 60,
+          reconnectTimeInSeconds: 5,
+        },
+        prefetchCount: 1,
+      },
+    };
+  }
+
   static createServerConfig(configService: ConfigService, queueName: string) {
     const url = configService.getOrThrow<string>('RABBITMQ_URL', {
       infer: true,

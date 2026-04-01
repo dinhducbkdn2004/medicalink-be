@@ -38,6 +38,7 @@ export * from './assets-list-response.dto';
 // Query DTOs
 export * from './get-blogs-query.dto';
 export * from './blog-query.dto';
+export * from './blog-category-query.dto';
 export * from './blog-public-query.dto';
 export * from './get-questions-query.dto';
 export * from './get-answers-query.dto';

@@ -10,10 +10,11 @@ import {
 } from '@app/contracts';
 import { NotFoundError } from '@app/domain-errors';
 import { extractPublicIdFromUrl } from '@app/commons/utils';
-import { ASSETS_PATTERNS } from '@app/contracts/patterns';
+import { ASSETS_PATTERNS, ORCHESTRATOR_EVENTS } from '@app/contracts/patterns';
 import { DoctorCacheInvalidationService } from '../cache/doctor-cache-invalidation.service';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
+import { RabbitMQService } from '@app/rabbitmq';
 
 @Injectable()
 export class DoctorsService {
@@ -24,6 +25,7 @@ export class DoctorsService {
     private readonly doctorCacheInvalidation: DoctorCacheInvalidationService,
     @Inject('CONTENT_SERVICE')
     private readonly contentClient: ClientProxy,
+    private readonly rabbitMQ: RabbitMQService,
   ) {}
 
   async create(
@@ -34,6 +36,11 @@ export class DoctorsService {
     // Synchronous cache invalidation (targeted + lists)
     await this.doctorCacheInvalidation.invalidateByStaffAccountId(
       result.staffAccountId,
+    );
+
+    this.emitDoctorKnowledgeEvent(
+      ORCHESTRATOR_EVENTS.DOCTOR_PROFILE_CREATED,
+      result,
     );
 
     return result;
@@ -48,12 +55,17 @@ export class DoctorsService {
     fullName: string;
     isMale: boolean;
   }): Promise<DoctorProfileResponseDto> {
-    return this.doctorRepo.create({
+    const created = await this.doctorRepo.create({
       staffAccountId: payload.staffAccountId,
       isActive: false,
       fullName: payload.fullName,
       isMale: payload.isMale,
     });
+    this.emitDoctorKnowledgeEvent(
+      ORCHESTRATOR_EVENTS.DOCTOR_PROFILE_CREATED,
+      created,
+    );
+    return created;
   }
 
   async getPublicList(
@@ -159,6 +171,11 @@ export class DoctorsService {
       nextPublicIds: nextAssets,
     });
 
+    this.emitDoctorKnowledgeEvent(
+      ORCHESTRATOR_EVENTS.DOCTOR_PROFILE_UPDATED,
+      result,
+    );
+
     return result;
   }
 
@@ -184,6 +201,8 @@ export class DoctorsService {
       { publicIds: assetPublicIds },
     );
 
+    this.safeEmitDoctorDeleted(existing.id);
+
     return result;
   }
 
@@ -200,6 +219,11 @@ export class DoctorsService {
     // Synchronous cache invalidation (targeted + lists)
     await this.doctorCacheInvalidation.invalidateByStaffAccountId(
       doctor.staffAccountId,
+    );
+
+    this.emitDoctorKnowledgeEvent(
+      ORCHESTRATOR_EVENTS.DOCTOR_PROFILE_UPDATED,
+      doctor,
     );
 
     return doctor;
@@ -297,6 +321,11 @@ export class DoctorsService {
       `Synced profile for doctor ${doctor.id}: fullName=${payload.fullName}, isMale=${payload.isMale}`,
     );
 
+    this.emitDoctorKnowledgeEvent(
+      ORCHESTRATOR_EVENTS.DOCTOR_PROFILE_UPDATED,
+      result,
+    );
+
     return result;
   }
 
@@ -317,6 +346,35 @@ export class DoctorsService {
     }
 
     return publicIds;
+  }
+
+  private emitDoctorKnowledgeEvent(
+    event: typeof ORCHESTRATOR_EVENTS.DOCTOR_PROFILE_CREATED,
+    profile: DoctorProfileResponseDto,
+  ) {
+    try {
+      this.rabbitMQ.emitEvent(event, JSON.parse(JSON.stringify(profile)));
+    } catch (err) {
+      this.logger.warn(
+        `Failed to emit ${event}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  private safeEmitDoctorDeleted(profileId: string) {
+    try {
+      this.rabbitMQ.emitEvent(ORCHESTRATOR_EVENTS.DOCTOR_PROFILE_DELETED, {
+        id: profileId,
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to emit ${ORCHESTRATOR_EVENTS.DOCTOR_PROFILE_DELETED}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   private async safeContentCall<T>(

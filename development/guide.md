@@ -98,3 +98,15 @@ pnpm start:notification
 ```
 
 That's it! Now you can access the services locally in url `http://localhost:3000` (API Gateway).
+
+## AI worker (medicalink-ai-service, optional)
+
+Infrastructure Compose (`development/docker-compose.yml`) includes **Qdrant** (ports `6333` / `6334`) alongside Postgres, Redis, and RabbitMQ. The Docker network uses the fixed name **`medicalink-network`** so the Python AI worker can attach from the separate `medicalink-ai-service` repository.
+
+1. Start infra: `pnpm dev-docker:up`
+2. Start gateway and provider (and any other services you need) on the host.
+3. In `medicalink-ai-service`: copy `.env.docker.example` to `.env`, set `OPENAI_API_KEY`, keep `rabbitmq` / `qdrant` hostnames for Docker networking.
+4. Run integrated Compose from AI repo: `docker compose -f compose.integrated.yaml up -d --build`
+5. Initial vector load: `docker compose -f compose.integrated.yaml run --rm medicalink-ai medicalink-ai-sync`
+
+Full Vietnamese walkthrough: see `medicalink-ai-service/README.md` → section **“Hợp nhất với medicalink-microservice”**.

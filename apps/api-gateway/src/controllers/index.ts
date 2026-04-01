@@ -1,5 +1,7 @@
+export * from './ai.controller';
 export * from './auth.controller';
 export * from './doctors.controller';
+export * from './doctor-recommendation.controller';
 export * from './doctor-profile.controller';
 export * from './patients.controller';
 export * from './permissions.controller';
