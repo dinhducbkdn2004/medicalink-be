@@ -17,7 +17,11 @@ env:
   IMAGE_TAG: staging-${{ github.sha }}
 
 jobs:
+  ci:
+    uses: ./.github/workflows/ci-reusable.yml
+
   detect-changes:
+    needs: ci
     runs-on: ubuntu-latest
     outputs:
       services: ${{ steps.detect.outputs.services }}
@@ -199,7 +203,7 @@ jobs:
           echo "- **VM**: ${{ secrets.VM_HOST }}" >> $GITHUB_STEP_SUMMARY
 
   notify-completion:
-    needs: [detect-changes, build-services, deploy-services]
+    needs: [ci, detect-changes, build-services, deploy-services]
     if: always()
     runs-on: ubuntu-latest
     steps:
