@@ -24,7 +24,11 @@ env:
   IMAGE_TAG: ${{ github.event.inputs.image_tag || format('staging-{0}', github.sha) }}
 
 jobs:
+  ci:
+    uses: ./.github/workflows/ci-reusable.yml
+
   build-services:
+    needs: ci
     if: github.event.inputs.force_rebuild == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -88,8 +92,8 @@ jobs:
           platforms: linux/amd64
 
   deploy-services:
-    needs: build-services
-    if: always() && (needs.build-services.result == 'success' || needs.build-services.result == 'skipped')
+    needs: [ci, build-services]
+    if: always() && needs.ci.result == 'success' && (needs.build-services.result == 'success' || needs.build-services.result == 'skipped')
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -132,7 +136,7 @@ jobs:
           echo "**Full Image Name**: ghcr.io/${{ env.GITHUB_OWNER }}/medicalink-${{ matrix.service }}:${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
 
   notify-completion:
-    needs: [build-services, deploy-services]
+    needs: [ci, build-services, deploy-services]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -140,6 +144,7 @@ jobs:
         run: |
           echo "## Manual Deploy All Services Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **CI**: ${{ needs.ci.result }}" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ needs.deploy-services.result }}" = "success" ]; then
             echo "**All Services Deployed Successfully**" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,87 @@
+# Gọi từ ci.yml (PR/push) và deploy-staging.yml — giữ một nơi chạy lint/build/test
+name: CI (reusable)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate (all services)
+        run: pnpm prisma:generate
+
+      - name: Prettier check
+        run: pnpm format:check
+
+      - name: ESLint (no fix)
+        run: pnpm exec eslint "apps/**/*.ts" "libs/**/*.ts" --max-warnings 0
+
+      - name: Unit tests
+        run: pnpm test -- --passWithNoTests
+
+  build-apps:
+    needs: quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - script: build:gateway
+            name: api-gateway
+          - script: build:accounts
+            name: accounts-service
+          - script: build:provider
+            name: provider-directory-service
+          - script: build:booking
+            name: booking-service
+          - script: build:content
+            name: content-service
+          - script: build:notification
+            name: notification-service
+          - script: build:orchestrator
+            name: orchestrator-service
+    name: Build ${{ matrix.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma generate
+        run: pnpm prisma:generate
+
+      - name: Build ${{ matrix.name }}
+        run: pnpm run ${{ matrix.script }}
