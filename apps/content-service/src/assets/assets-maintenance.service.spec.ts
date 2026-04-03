@@ -1,6 +1,10 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { AssetsMaintenanceService } from './assets-maintenance.service';
 import { CLOUDINARY } from './cloudinary.provider';
+
+const TEST_FOLDER = 'medicalink';
+const pathId = (publicId: string) => `${TEST_FOLDER}/${publicId}`;
 
 // Unit tests for AssetsMaintenanceService
 describe('AssetsMaintenanceService', () => {
@@ -13,6 +17,16 @@ describe('AssetsMaintenanceService', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         AssetsMaintenanceService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest
+              .fn()
+              .mockImplementation((key: string) =>
+                key === 'SERVICE_NAME' ? TEST_FOLDER : undefined,
+              ),
+          },
+        },
         {
           provide: CLOUDINARY,
           useValue: {
@@ -39,8 +53,8 @@ describe('AssetsMaintenanceService', () => {
     await service.cleanupEntityAssets(['img1', '', 'img2', 'img1']);
 
     expect(destroyMock).toHaveBeenCalledTimes(2);
-    expect(destroyMock).toHaveBeenNthCalledWith(1, 'img1');
-    expect(destroyMock).toHaveBeenNthCalledWith(2, 'img2');
+    expect(destroyMock).toHaveBeenNthCalledWith(1, pathId('img1'));
+    expect(destroyMock).toHaveBeenNthCalledWith(2, pathId('img2'));
   });
 
   it('should delete removed IDs in reconcile', async () => {
@@ -49,7 +63,7 @@ describe('AssetsMaintenanceService', () => {
     await service.reconcileEntityAssets(['a', 'b', 'c'], ['b', 'c', 'd']);
 
     expect(destroyMock).toHaveBeenCalledTimes(1);
-    expect(destroyMock).toHaveBeenCalledWith('a');
+    expect(destroyMock).toHaveBeenCalledWith(pathId('a'));
   });
 
   it('should return on not found', async () => {
@@ -58,28 +72,26 @@ describe('AssetsMaintenanceService', () => {
     await service.cleanupEntityAssets(['gone']);
 
     expect(destroyMock).toHaveBeenCalledTimes(1);
-    expect(destroyMock).toHaveBeenCalledWith('gone');
+    expect(destroyMock).toHaveBeenCalledWith(pathId('gone'));
   });
 
-  it('should retry on errors and eventually succeed', async () => {
-    destroyMock
-      .mockRejectedValueOnce(new Error('fail-1'))
-      .mockResolvedValueOnce({ result: 'ok' });
+  it('should swallow Cloudinary rejections (single attempt)', async () => {
+    destroyMock.mockRejectedValueOnce(new Error('fail-1'));
 
-    await service.cleanupEntityAssets(['retry-id']);
+    await expect(
+      service.cleanupEntityAssets(['retry-id']),
+    ).resolves.toBeUndefined();
 
-    expect(destroyMock).toHaveBeenCalledTimes(2);
-    expect(destroyMock).toHaveBeenLastCalledWith('retry-id');
+    expect(destroyMock).toHaveBeenCalledTimes(1);
+    expect(destroyMock).toHaveBeenCalledWith(pathId('retry-id'));
   });
 
-  it('should retry on unexpected result', async () => {
-    destroyMock
-      .mockResolvedValueOnce({ result: 'error' })
-      .mockResolvedValueOnce({ result: 'error' });
+  it('should call destroy once and ignore result payload', async () => {
+    destroyMock.mockResolvedValueOnce({ result: 'error' });
 
     await service.cleanupEntityAssets(['bad']);
 
-    expect(destroyMock).toHaveBeenCalledTimes(2);
-    expect(destroyMock).toHaveBeenLastCalledWith('bad');
+    expect(destroyMock).toHaveBeenCalledTimes(1);
+    expect(destroyMock).toHaveBeenCalledWith(pathId('bad'));
   });
 });
