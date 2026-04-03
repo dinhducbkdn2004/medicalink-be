@@ -98,11 +98,15 @@ export class ReviewAnalysisCompositeService {
     }
 
     // Compose the data
-    return analyses.map((analysis) => ({
-      ...analysis,
-      creatorName: analysis.createdBy
-        ? creatorsMap.get(analysis.createdBy)?.fullName
-        : undefined,
-    }));
+    return analyses.map((analysis) => {
+      const createdById =
+        typeof analysis.createdBy === 'string' ? analysis.createdBy : '';
+      return {
+        ...analysis,
+        creatorName: createdById
+          ? creatorsMap.get(createdById)?.fullName
+          : undefined,
+      };
+    });
   }
 }

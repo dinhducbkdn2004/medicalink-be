@@ -302,7 +302,9 @@ export class DoctorsService {
     }
 
     // Update only the denormalized fields
-    const updateData: any = {};
+    const updateData: Partial<
+      Pick<CreateDoctorProfileDto, 'fullName' | 'isMale'>
+    > = {};
     if (payload.fullName !== undefined) {
       updateData.fullName = payload.fullName;
     }
