@@ -99,8 +99,11 @@ export class ReviewAnalysisCompositeService {
 
     // Compose the data
     return analyses.map((analysis) => {
+      const rawCreatedBy: unknown = analysis.createdBy;
       const createdById =
-        typeof analysis.createdBy === 'string' ? analysis.createdBy : '';
+        typeof rawCreatedBy === 'string' && rawCreatedBy.length > 0
+          ? rawCreatedBy
+          : '';
       return {
         ...analysis,
         creatorName: createdById
