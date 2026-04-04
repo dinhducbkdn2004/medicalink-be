@@ -99,7 +99,7 @@ cd ~/medicalink-microservice
 mkdir -p nginx/ssl
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout nginx/ssl/key.pem -out nginx/ssl/cert.pem \
-  -subj "/CN=api.medicalink.click"
+  -subj "/CN=api.medicalink.online"
 ```
 
 Production: thay bằng Let’s Encrypt hoặc chứng chỉ Cloudflare Origin, rồi sửa `server_name` nếu domain khác.
@@ -145,29 +145,36 @@ Lặp tương tự các service có Prisma (booking, content, notification, prov
 
 ## 9. Đưa microservice lên bằng CI/CD (khuyến nghị)
 
-1. Push code lên nhánh **`staging`** (kích hoạt `deploy-staging.yml`), **hoặc** Actions → **Manual Deploy All** → bật **Force rebuild**.
+1. **Staging:** push nhánh **`staging`** → `deploy-staging.yml`. **Production:** push **`main`** / **`master`** → `deploy-production.yml` (image tag `production-<sha>`).
 
-2. Pipeline build image → push **GHCR** → SSH `deploy-to-vm.sh` — server đã có repo tại **`/home/azureuser/medicalink-microservice`** (khớp `VM_USER`).
+2. **Hoặc** Actions → **Manual Deploy All** / **Manual Deploy Service** → bật **Force rebuild** khi cần rollout đủ dịch vụ.
 
-3. Lần đầu có thể cần **Manual Deploy All** vì `detect-changes` chỉ deploy khi có diff so với commit trước.
+3. Pipeline: build → GHCR → SSH `deploy-to-vm.sh` (trước đó **`git pull`** trên VM nếu `VM_GIT_PULL=true`). Thư mục server: **`/home/<VM_USER>/medicalink-microservice`** (khớp secret `VM_USER`).
+
+4. Lần đầu hoặc commit không đụng `apps/*`, có thể cần **Manual Deploy All** + **Force rebuild**.
+
+5. **RBAC seed:** không chạy tự động khi push. Cần thì: Actions → **Seed permissions on VM** (gõ `CONFIRM`), hoặc deploy manual với *run permission seed*, hoặc `docker exec medicalink-accounts tsx apps/accounts-service/scripts/permission-seeds.ts` (image accounts mới).
 
 ---
 
 ## 10. Chạy AI worker
 
-1. **`~/medicalink-ai-service/.env`** — nội dung production (`RABBITMQ_URL`, `QDRANT_URL`, `API_GATEWAY_BASE_URL=http://api-gateway:3000`, `OPENAI_API_KEY`, …).
+1. **`~/medicalink-ai-service/.env`** — production (`RABBITMQ_URL`, `QDRANT_URL`, `API_GATEWAY_BASE_URL=http://api-gateway:3000`, `OPENAI_API_KEY`, …).
 
-2. Push nhánh **staging/main** để `cd-docker.yml` build + deploy, **hoặc** trên VM:
+2. **Sau CI (khuyến nghị):** trong repo **medicalink-ai-service**, push **`staging`** / **`main`** / **`master`** để workflow **`cd-docker.yml`** build image → GHCR → SSH chạy **`compose.ghcr.yaml`** (cần secrets `VM_*` trên repo AI).
+
+3. **Build tại chỗ trên VM** (không qua GHCR):
 
 ```bash
 cd ~/medicalink-ai-service
 docker compose -f compose.integrated.yaml up -d --build
 ```
 
-3. Lần đầu nạp vector (nếu cần):
+4. Lần đầu nạp vector (nếu cần) — thay file compose đúng với cách bạn chạy (`integrated` hoặc `ghcr`):
 
 ```bash
 docker compose -f compose.integrated.yaml run --rm medicalink-ai medicalink-ai-sync
+# hoặc: compose -f compose.ghcr.yaml run --rm medicalink-ai medicalink-ai-sync
 ```
 
 ---

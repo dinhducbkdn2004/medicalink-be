@@ -932,7 +932,7 @@ export class AppointmentsService {
         statusNote: statusNote ?? null,
         reviewUrl:
           newStatus === AppointmentStatus.COMPLETED
-            ? `https://medicalink.click/doctor/${snapshot.doctorId}/review`
+            ? `https://medicalink.online/doctor/${snapshot.doctorId}/review`
             : null,
         statusMessage: this.buildStatusMessage(newStatus),
       };

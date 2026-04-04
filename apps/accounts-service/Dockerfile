@@ -73,6 +73,12 @@ RUN rm -f package.json pnpm-lock.yaml
 COPY --from=builder --chown=medicalink:nodejs /app/apps/accounts-service/prisma ./apps/accounts-service/prisma
 COPY --from=builder --chown=medicalink:nodejs /app/dist/apps/accounts-service ./dist/apps/accounts-service
 
+# Idempotent RBAC / permission seed for production ops (optional: see deploy-to-vm.sh, workflows)
+COPY --from=builder --chown=medicalink:nodejs /app/apps/accounts-service/scripts/permission-seeds.ts ./apps/accounts-service/scripts/permission-seeds.ts
+
+USER root
+RUN npm install -g tsx@4.19.2
+
 # Switch to non-root user
 USER medicalink
 

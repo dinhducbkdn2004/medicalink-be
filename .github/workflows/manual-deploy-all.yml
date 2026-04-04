@@ -18,6 +18,11 @@ on:
         required: false
         type: string
         default: ''
+      run_permission_seed:
+        description: 'Nếu deploy có accounts-service: chạy permission seed sau migrate'
+        required: false
+        type: boolean
+        default: false
 
 env:
   GITHUB_OWNER: ${{ github.repository_owner }}
@@ -120,6 +125,8 @@ jobs:
           VM_USER: ${{ secrets.VM_USER }}
           VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VM_GIT_PULL: 'true'
+          RUN_PERMISSION_SEED: ${{ matrix.service == 'accounts-service' && github.event.inputs.run_permission_seed == true && 'true' || 'false' }}
         run: |
           echo "Deploying ${{ matrix.service }} with image tag: ${{ env.IMAGE_TAG }}"
           ./scripts/deploy-to-vm.sh ${{ matrix.service }} ${{ env.IMAGE_TAG }}
