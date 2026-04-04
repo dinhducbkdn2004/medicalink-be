@@ -48,7 +48,7 @@ Workflow **`.github/workflows/cd-docker.yml`** (trong repo **medicalink-ai-servi
 
 - **`seed-permissions-vm.yml`**: chỉ `workflow_dispatch`, nhập `CONFIRM` — SSH chạy `permission-seeds` trong container **medicalink-accounts** (image accounts đã có `tsx` + script).
 - Trong **deploy** (staging / production / manual): bật input **run permission seed** chỉ khi cần; luồng push tự động **không** seed.
-- Seed demo toàn DB (`pnpm seed` / `scripts/seed.ts`) **không** nằm trong CI — chỉ chạy tay khi chính sách cho phép.
+- Seed nội dung demo (**`pnpm seed`**: chuyên khoa / bác sĩ / blog từ `crawl-data`) **không** nằm trong CI — chỉ trên máy có repo + biến `*_DATABASE_URL` (xem `DEPLOYMENT_PRODUCTION_VI.md` §5.4); **`seedDoctors` có xóa toàn bộ doctor**.
 
 ---
 
