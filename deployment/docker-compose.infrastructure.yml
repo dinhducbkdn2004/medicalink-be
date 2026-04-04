@@ -30,11 +30,7 @@ services:
       timeout: 5s
       retries: 5
     logging:
-      driver: gcplogs
-      options:
-        gcp-project: "medicalink-06"
-        gcp-log-cmd: "true"
-        labels: "service,environment,component"
+      driver: json-file
 
   # Redis Cache
   redis:
@@ -52,11 +48,7 @@ services:
       timeout: 5s
       retries: 5
     logging:
-      driver: gcplogs
-      options:
-        gcp-project: "medicalink-06"
-        gcp-log-cmd: "true"
-        labels: "service,environment,component"
+      driver: json-file
 
   # RabbitMQ Message Broker
   rabbitmq:
@@ -78,11 +70,7 @@ services:
       timeout: 10s
       retries: 5
     logging:
-      driver: gcplogs
-      options:
-        gcp-project: "medicalink-06"
-        gcp-log-cmd: "true"
-        labels: "service,environment,component"
+      driver: json-file
 
   # Qdrant (vector DB cho medicalink-ai-service — chỉ nội bộ network, không bắt buộc Qdrant Cloud)
   qdrant:
@@ -100,11 +88,7 @@ services:
       retries: 5
       start_period: 20s
     logging:
-      driver: gcplogs
-      options:
-        gcp-project: "medicalink-06"
-        gcp-log-cmd: "true"
-        labels: "service,environment,component"
+      driver: json-file
 
   # Nginx Load Balancer
   nginx:
@@ -120,11 +104,7 @@ services:
       - medicalink-network
     restart: unless-stopped
     logging:
-      driver: gcplogs
-      options:
-        gcp-project: "medicalink-06"
-        gcp-log-cmd: "true"
-        labels: "service,environment,component"
+      driver: json-file
 
 networks:
   medicalink-network:

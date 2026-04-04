@@ -16,12 +16,7 @@ services:
     command: ["node", "dist/apps/notification-service/main.js"]
     restart: unless-stopped
     logging:
-      driver: gcplogs
-      options:
-        gcp-project: "medicalink-06"
-        gcp-log-cmd: "true"
-        labels: "service,environment,component"
-        env: "NODE_ENV,APP_NAME"
+      driver: json-file
 
 networks:
   medicalink-network:

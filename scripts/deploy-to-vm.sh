@@ -129,6 +129,19 @@ print_success "Connected to VM server"
 # Navigate to project directory on VM
 PROJECT_DIR="/home/$VM_USER/medicalink-microservice"
 
+# Keep compose / nginx / deployment/*.yml on VM in sync with Git (image deploy alone does not update these)
+if [ "${VM_GIT_PULL:-}" = "true" ]; then
+    print_header "Syncing medicalink-microservice on VM (git pull)..."
+    if ssh_exec "cd $PROJECT_DIR && git rev-parse --is-inside-work-tree >/dev/null 2>&1"; then
+        if ! ssh_exec "cd $PROJECT_DIR && git pull --ff-only"; then
+            print_warning "git pull --ff-only failed (remote may require merge); trying git pull"
+            ssh_exec "cd $PROJECT_DIR && git pull" || print_warning "Git sync skipped — check VM repo branch and remotes"
+        fi
+    else
+        print_warning "Not a git checkout at $PROJECT_DIR — skipping git pull"
+    fi
+fi
+
 print_header "Pulling latest image from GHCR..."
 
 # Login to GHCR and pull image
@@ -303,6 +316,17 @@ if [[ "$SERVICE_NAME" =~ ^(accounts-service|booking-service|content-service|noti
     else
         print_warning "Prisma migrations failed for $SERVICE_NAME (this might be normal if no new migrations exist)"
         # Don't exit on migration failure as it might be normal
+    fi
+
+    # Optional: idempotent permission / RBAC seed (accounts only — see workflow input RUN_PERMISSION_SEED)
+    if [ "$SERVICE_NAME" = "accounts-service" ] && [ "${RUN_PERMISSION_SEED:-}" = "true" ]; then
+        print_header "Running permission seed in accounts container (RUN_PERMISSION_SEED=true)..."
+        if ssh_exec "docker exec $CONTAINER_NAME tsx apps/accounts-service/scripts/permission-seeds.ts"; then
+            print_success "Permission seed completed"
+        else
+            print_error "Permission seed failed"
+            exit 1
+        fi
     fi
 else
     print_header "Skipping Prisma migrations for $SERVICE_NAME (not a database service)"

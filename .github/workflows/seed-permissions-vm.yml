@@ -1,0 +1,26 @@
+name: Seed permissions on VM (RBAC)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Gõ CONFIRM để chạy permission seed idempotent trên VM'
+        required: true
+        type: string
+
+jobs:
+  seed:
+    if: github.event.inputs.confirm == 'CONFIRM'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run seed via SSH
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+        run: |
+          chmod +x scripts/seed-permissions-on-vm.sh
+          ./scripts/seed-permissions-on-vm.sh

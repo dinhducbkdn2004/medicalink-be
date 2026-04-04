@@ -55,6 +55,7 @@ jobs:
           VM_USER: ${{ secrets.VM_USER }}
           VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VM_GIT_PULL: 'true'
         run: |
           echo "🚀 Deploying ${{ matrix.service }} with existing image tag: ${{ env.IMAGE_TAG }}"
           ./scripts/deploy-to-vm.sh ${{ matrix.service }} ${{ env.IMAGE_TAG }}

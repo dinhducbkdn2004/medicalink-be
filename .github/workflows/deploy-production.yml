@@ -1,9 +1,12 @@
-name: Deploy to Staging
+# Deploy production: push main/master → build (theo thay đổi) → GHCR → VM
+# Image tag: production-<sha> (khác staging để không ghi đè nhầm)
+name: Deploy to Production
 
 on:
   push:
     branches:
-      - staging
+      - main
+      - master
   workflow_dispatch:
     inputs:
       force_rebuild_all:
@@ -12,14 +15,18 @@ on:
         type: boolean
         default: false
       run_permission_seed:
-        description: 'Khi deploy accounts-service, chạy permission seed (idempotent) — chỉ bật khi cần'
+        description: 'Sau khi deploy accounts-service, chạy permission seed (idempotent)'
         required: false
         type: boolean
         default: false
 
+concurrency:
+  group: deploy-production-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   GITHUB_OWNER: ${{ github.repository_owner }}
-  IMAGE_TAG: staging-${{ github.sha }}
+  IMAGE_TAG: production-${{ github.sha }}
 
 jobs:
   ci:
@@ -51,7 +58,7 @@ jobs:
             echo "Detecting changes..."
             SERVICES=$(./scripts/detect-changes.sh 2>/dev/null)
           fi
-          
+
           if [ -z "$SERVICES" ]; then
             echo "No services to build"
             echo "services=" >> $GITHUB_OUTPUT
@@ -62,7 +69,7 @@ jobs:
 
       - name: Summary
         run: |
-          echo "## Change Detection Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Production — Change Detection" >> $GITHUB_STEP_SUMMARY
           if [ -z "${{ steps.detect.outputs.services }}" ]; then
             echo "No services need rebuilding" >> $GITHUB_STEP_SUMMARY
           else
@@ -81,7 +88,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        service: 
+        service:
           - accounts-service
           - api-gateway
           - booking-service
@@ -157,9 +164,10 @@ jobs:
     needs: [detect-changes, build-services]
     if: needs.detect-changes.outputs.services != ''
     runs-on: ubuntu-latest
+    environment: production
     strategy:
       matrix:
-        service: 
+        service:
           - accounts-service
           - api-gateway
           - booking-service
@@ -204,10 +212,8 @@ jobs:
       - name: Deployment Summary
         if: steps.check-service.outputs.needs_deploy == 'true'
         run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "Successfully deployed ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image**: ghcr.io/${{ env.GITHUB_OWNER }}/medicalink-${{ matrix.service }}:${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **VM**: ${{ secrets.VM_HOST }}" >> $GITHUB_STEP_SUMMARY
+          echo "## Production Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "Deployed **${{ matrix.service }}** → ghcr.io/${{ env.GITHUB_OWNER }}/medicalink-${{ matrix.service }}:${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
 
   notify-completion:
     needs: [ci, detect-changes, build-services, deploy-services]
@@ -216,22 +222,10 @@ jobs:
     steps:
       - name: Workflow Summary
         run: |
-          echo "## Staging Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
+          echo "## Production deployment finished" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit**: ${{ github.sha }} | **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.detect-changes.outputs.services }}" = "" ]; then
-            echo "No changes detected - no deployment needed" >> $GITHUB_STEP_SUMMARY
+            echo "No service changes — nothing deployed." >> $GITHUB_STEP_SUMMARY
           else
-            echo "Services deployed:" >> $GITHUB_STEP_SUMMARY
-            for service in ${{ needs.detect-changes.outputs.services }}; do
-              echo "- $service" >> $GITHUB_STEP_SUMMARY
-            done
+            echo "Tag: \`${{ env.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
           fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Image Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Registry**: ghcr.io/${{ env.GITHUB_OWNER }}" >> $GITHUB_STEP_SUMMARY
