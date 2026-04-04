@@ -85,3 +85,5 @@ nginx/ssl/
 CLAUDE.md
 .claude
 .gemini
+
+/docs
