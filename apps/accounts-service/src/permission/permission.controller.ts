@@ -1,5 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
+import { BadRequestError } from '@app/domain-errors';
 import { PermissionService } from './permission.service';
 import type { UpdateGroupPayload } from './interfaces';
 import {
@@ -30,20 +31,16 @@ export class PermissionController {
   async getUserPermissionSnapshot(
     @Payload() payload: { userId: string; tenantId?: string },
   ) {
-    return this.permissionService.getUserPermissionSnapshot(
-      payload.userId,
-      payload.tenantId || 'global',
-    );
+    const { userId, tenantId } = this.normalizeUserTenantPayload(payload);
+    return this.permissionService.getUserPermissionSnapshot(userId, tenantId);
   }
 
   @MessagePattern(PERMISSION_PATTERNS.GET_USER_PERMISSIONS)
   async getUserPermissions(
     @Payload() payload: { userId: string; tenantId?: string },
   ) {
-    return this.permissionService.getUserPermissionDetails(
-      payload.userId,
-      payload.tenantId || 'global',
-    );
+    const { userId, tenantId } = this.normalizeUserTenantPayload(payload);
+    return this.permissionService.getUserPermissionDetails(userId, tenantId);
   }
 
   @MessagePattern(PERMISSION_PATTERNS.HAS_PERMISSION)
@@ -57,13 +54,61 @@ export class PermissionController {
       context?: Record<string, any>;
     },
   ) {
+    const { userId, tenantId } = this.normalizeUserTenantPayload(payload);
     return this.permissionService.hasPermission(
-      payload.userId,
+      userId,
       payload.resource,
       payload.action,
-      payload.tenantId || 'global',
+      tenantId,
       payload.context,
     );
+  }
+
+  /** Coerce RPC payload so Prisma always receives string userId / tenantId. */
+  private normalizeUserTenantPayload(payload: {
+    userId?: unknown;
+    tenantId?: unknown;
+  }): { userId: string; tenantId: string } {
+    const userId = this.coerceNonEmptyString(payload.userId, 'userId');
+    const tenantId = this.coerceTenantId(payload.tenantId);
+    return { userId, tenantId };
+  }
+
+  private coerceNonEmptyString(value: unknown, field: string): string {
+    if (value === undefined || value === null) {
+      throw new BadRequestError(`${field} is required`);
+    }
+    if (typeof value === 'string') {
+      const s = value.trim();
+      if (!s) {
+        throw new BadRequestError(`${field} is required`);
+      }
+      return s;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return String(value);
+    }
+    if (typeof value === 'bigint') {
+      return String(value);
+    }
+    throw new BadRequestError(`${field} must be a string or number`);
+  }
+
+  private coerceTenantId(value: unknown): string {
+    if (value === undefined || value === null) {
+      return 'global';
+    }
+    if (typeof value === 'string') {
+      const raw = value.trim();
+      return raw !== '' ? raw : 'global';
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return String(value);
+    }
+    if (typeof value === 'bigint') {
+      return String(value);
+    }
+    throw new BadRequestError('tenantId must be a string or number');
   }
 
   // User Permission Management

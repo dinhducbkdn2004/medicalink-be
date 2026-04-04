@@ -1,8 +1,7 @@
 # Local Development Guide
 
-This guide provides instructions for setting up a local development environment
-for the Medicalink microservices project. It covers the necessary tools,
-configurations, and steps to get the services running on your local machine.
+This guide provides instructions for setting up a local development environment for the Medicalink microservices
+project. It covers the necessary tools, configurations, and steps to get the services running on your local machine.
 
 ## Prerequisites
 
@@ -10,8 +9,7 @@ Before you begin, ensure you have the following installed on your machine:
 
 - [Node.js](https://nodejs.org/) (version 20 or higher, recommend 24.x.x)
 - [Docker](https://www.docker.com/) (for containerized services)
-- [Docker Compose](https://docs.docker.com/compose/install/) (for managing
-  multi-container Docker applications)
+- [Docker Compose](https://docs.docker.com/compose/install/) (for managing multi-container Docker applications)
 - [Git](https://git-scm.com/) (for version control)
 
 ## Setting Up the Environment
@@ -24,8 +22,8 @@ pnpm install
 
 ### 2. Run Docker Containers (Optional for faster connections between services)
 
-The project requires some services to be running in Docker containers. You can
-use the provided `docker-compose.yml` file to set up these services.
+The project requires some services to be running in Docker containers. You can use the provided `docker-compose.yml`
+file to set up these services.
 
 ```bash
 pnpm dev-docker:up
@@ -40,12 +38,11 @@ This command will start the necessary services in detached mode.
 
 ### 3. Configure Environment Variables
 
-Create a `.env` file in the root directory of project and add the necessary
-configurations. Refer to the `.env.example` file provided.
+Create a `.env` file in the root directory of project and add the necessary configurations. Refer to the `.env.example`
+file provided.
 
-If using local Docker containers for services like PostgreSQL, Redis, etc.,
-ensure the connection strings in your `.env` files point to the correct Docker
-container addresses.
+If using local Docker containers for services like PostgreSQL, Redis, etc., ensure the connection strings in your `.env`
+files point to the correct Docker container addresses.
 
 ```plaintext
 DATABASE_URL="postgresql://postgres:postgres@localhost:54321/postgres?pgbouncer=true"
@@ -100,24 +97,15 @@ pnpm start:content
 pnpm start:notification
 ```
 
-That's it! Now you can access the services locally in url
-`http://localhost:3000` (API Gateway).
+That's it! Now you can access the services locally in url `http://localhost:3000` (API Gateway).
 
 ## AI worker (medicalink-ai-service, optional)
 
-Infrastructure Compose (`development/docker-compose.yml`) includes **Qdrant**
-(ports `6333` / `6334`) alongside Postgres, Redis, and RabbitMQ. The Docker
-network uses the fixed name **`medicalink-network`** so the Python AI worker can
-attach from the separate `medicalink-ai-service` repository.
+Infrastructure Compose (`development/docker-compose.yml`) includes **Qdrant** (ports `6333` / `6334`) alongside Postgres, Redis, and RabbitMQ. The Docker network uses the fixed name **`medicalink-network`** so the Python AI worker can attach from the separate `medicalink-ai-service` repository.
 
 1. Start infra: `pnpm dev-docker:up`
 2. Start gateway and provider (and any other services you need) on the host.
-3. In `medicalink-ai-service`: copy `.env.docker.example` to `.env`, set
-   `OPENAI_API_KEY`, keep `rabbitmq` / `qdrant` hostnames for Docker networking.
-4. Run integrated Compose from AI repo:
-   `docker compose -f compose.integrated.yaml up -d --build`
-5. Initial vector load:
-   `docker compose -f compose.integrated.yaml run --rm medicalink-ai medicalink-ai-sync`
-
-Full Vietnamese walkthrough: see `medicalink-ai-service/README.md` → section
-**“Hợp nhất với medicalink-microservice”**.
+3. In `medicalink-ai-service`: copy `.env.docker.example` to `.env`, set `OPENAI_API_KEY`, keep `rabbitmq` / `qdrant` hostnames for Docker networking.
+4. Run integrated Compose from AI repo: `docker compose -f compose.integrated.yaml up -d --build`
+5. Initial vector load: `docker compose -f compose.integrated.yaml run --rm medicalink-ai medicalink-ai-sync`
+Full Vietnamese walkthrough: see `medicalink-ai-service/README.md` → section **“Hợp nhất với medicalink-microservice”**.

@@ -66,6 +66,19 @@ export class PermissionRepository {
   }
 
   /**
+   * Default tenant "global" must match rows with tenant_id NULL (older seeds / pg_restore).
+   */
+  private userScopedTenantFilter(
+    tenantId: string,
+  ): { OR: Array<{ tenantId: string | null }> } | { tenantId: string } {
+    const t = tenantId?.trim() || 'global';
+    if (t === 'global') {
+      return { OR: [{ tenantId: 'global' }, { tenantId: null }] };
+    }
+    return { tenantId: t };
+  }
+
+  /**
    * Check if a group exists and throw NotFoundError if it doesn't
    */
   private async validateGroupExists(groupId: string): Promise<void> {
@@ -124,7 +137,7 @@ export class PermissionRepository {
       const userPermissions = await this.prisma.userPermission.findMany({
         where: {
           userId,
-          tenantId,
+          ...this.userScopedTenantFilter(tenantId),
         },
         include: {
           permission: true,
@@ -135,7 +148,7 @@ export class PermissionRepository {
       const groupPermissions = await this.prisma.userGroup.findMany({
         where: {
           userId,
-          tenantId,
+          ...this.userScopedTenantFilter(tenantId),
         },
         include: {
           group: {
@@ -231,7 +244,7 @@ export class PermissionRepository {
       const userPermissions = await this.prisma.userPermission.findMany({
         where: {
           userId,
-          tenantId,
+          ...this.userScopedTenantFilter(tenantId),
         },
         include: {
           permission: true,
@@ -253,7 +266,7 @@ export class PermissionRepository {
       const groupPermissions = await this.prisma.userGroup.findMany({
         where: {
           userId,
-          tenantId,
+          ...this.userScopedTenantFilter(tenantId),
         },
         include: {
           group: {
@@ -749,7 +762,9 @@ export class PermissionRepository {
       const userGroups = await this.prisma.userGroup.findMany({
         where: {
           userId,
-          ...(tenantId && { tenantId }),
+          ...(tenantId !== undefined && tenantId !== null && tenantId !== ''
+            ? this.userScopedTenantFilter(tenantId)
+            : {}),
         },
         include: {
           group: {
@@ -857,7 +872,7 @@ export class PermissionRepository {
 
   async getGroupPermissions(
     groupId: string,
-    tenantId?: string,
+    _tenantId?: string,
   ): Promise<
     Array<{
       id: string;
@@ -884,7 +899,6 @@ export class PermissionRepository {
       const groupPermissions = await this.prisma.groupPermission.findMany({
         where: {
           groupId,
-          ...(tenantId && { tenantId }),
         },
         include: {
           permission: {

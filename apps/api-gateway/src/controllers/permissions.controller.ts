@@ -8,6 +8,7 @@ import {
   Post,
   Put,
   Query,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import type { JwtPayloadDto } from '@app/contracts';
@@ -64,10 +65,20 @@ export class PermissionsController {
   // Get current user's permissions
   @Get('me')
   async getMyPermissions(@CurrentUser() user: JwtPayloadDto) {
+    const userId =
+      user?.sub !== undefined && user?.sub !== null ? String(user.sub) : '';
+    const tenantRaw =
+      user?.tenant !== undefined && user?.tenant !== null
+        ? String(user.tenant).trim()
+        : '';
+    const tenantId = tenantRaw !== '' ? tenantRaw : 'global';
+    if (!userId) {
+      throw new UnauthorizedException('Invalid token: missing subject');
+    }
     return this.microserviceService.sendWithTimeout(
       this.accountsClient,
       PERMISSION_PATTERNS.GET_USER_PERMISSIONS,
-      { userId: user.sub, tenantId: user.tenant },
+      { userId, tenantId },
     );
   }
 
