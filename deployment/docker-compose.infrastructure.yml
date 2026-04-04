@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
@@ -16,16 +16,12 @@ services:
       - medicalink-network
     restart: unless-stopped
     command: >
-      postgres
-      -c max_connections=200
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
+      postgres -c max_connections=200 -c shared_buffers=256MB -c
+      effective_cache_size=1GB -c maintenance_work_mem=64MB -c
+      checkpoint_completion_target=0.9 -c wal_buffers=16MB -c
+      default_statistics_target=100
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,7 +39,7 @@ services:
     command: redis-server --appendonly yes --maxmemory-policy noeviction
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,7 +61,7 @@ services:
       - medicalink-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
       interval: 30s
       timeout: 10s
       retries: 5
@@ -82,7 +78,8 @@ services:
       - medicalink-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
+      test:
+        ['CMD-SHELL', "timeout 2 bash -c '</dev/tcp/127.0.0.1/6333' || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -95,11 +92,12 @@ services:
     image: nginx:alpine
     container_name: medicalink-nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
-      - ../nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ../nginx/ssl:/etc/nginx/ssl
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # Map thư mục chứng chỉ của Certbot từ máy Host vào Container
+      - /etc/letsencrypt:/etc/nginx/ssl:ro
     networks:
       - medicalink-network
     restart: unless-stopped
